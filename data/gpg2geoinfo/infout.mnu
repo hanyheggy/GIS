@@ -1,0 +1,193 @@
+DOC    INFOUT  1DX  1DY
+SCREEN = ( 3250 , 2050 , 3650 , 2200 )
+USING    ( SYSTEM , DXFOUT )
+INITIAL = INFINI ;
+
+
+R ------------ ;
+  MSUB INFINI  ;
+R ------------ ;
+
+K = MDOCB  ; S = 1 INFOUT  ;
+K = DADEP  ; S = 1 DXFOUT  ;
+
+K = MEXIT  ;
+
+
+NOTEPARM LINEND  = '$'      ;
+NOTEPARM PENTYP  =  7       ; R WHITE  ;
+NOTEPARM FONTID  = STANDARD ;
+NOTEPARM SYMSET  = GFIS     ;
+NOTEPARM LINEPAT = HARDWARE ;
+
+
+AREA INF (1,1)    0X  0Y   1DX  1DY  ;
+
+
+
+R ------------------------------------------------------------ ;
+R  GPG into INF                                                ;
+R ------------------------------------------------------------ ;
+
+K INF (1,1) MIRTN ; N ' INFOUT ' ;
+
+
+K = DNORM ; S = 1 COREXT    ; S = 2 2  ;
+K = DNORM ; S = 1 MINSYM    ; S = 2 10 ;
+K = DSET  ; S = 1 &FEAT.NUM ; S = 2 0  ;
+K = MGOSB ; S = 1 OPENINF   ;
+
+R ------------------------------------------;
+R  Write  DBU & WS Extents                  ;
+R ------------------------------------------;
+K = XPUNX ; S = 3 0 ; S = 4 'DM'; S = 5 1 ; S = 6 0 ;
+K = XPUNX ; S = 3 0 ;
+ S = 4 '5000000 5000000 24000000 24000000';
+ S = 5 1 ;
+ S = 6 0 ;
+
+R -----------------------------------------------;
+R  LINE  GPG_FAC    GRIDSTN   INF_LAYER(1)       ;
+R -----------------------------------------------;
+K = DSTAT ; S = 1 -20 ; S = 2 7 ; K = DSTA1 ;
+K = DSTAT ; S = 1  20 ; S = 2 7 ; S = 3 3 463 ; S = 4 E ;
+K = DSTA1 ;
+K = DENTR ; S = 1 32620 ;
+K = DSCAN ;
+ S = 1 20 ;
+ S = 2 7  ;
+ S = 3 E  ;
+ S = 4 1  ;
+R S = 6    ;
+
+R -----------------------------------------------;
+R  LINE  GPG_FAC    DISTSTN   INF_LAYER(1)       ;
+R -----------------------------------------------;
+K = DSTAT ; S = 1 -20 ; S = 2 7 ; K = DSTA1 ;
+K = DSTAT ; S = 1  20 ; S = 2 7 ; S = 3 3 516 ; S = 4 E ;
+K = DSTA1 ;
+K = DENTR ; S = 1 32621 ;
+K = DSCAN ;
+ S = 1 20 ;
+ S = 2 7  ;
+ S = 3 E  ;
+ S = 4 1  ;
+
+R -----------------------------------------------;
+R  LINE  GPG_FAC    MVOPENPT  INF_LAYER(1)       ;
+R -----------------------------------------------;
+K = DSTAT ; S = 1 -20 ; S = 2 7 ; K = DSTA1 ;
+K = DSTAT ; S = 1  20 ; S = 2 7 ; S = 3 3 520 ; S = 4 E ;
+K = DSTA1 ;
+K = DENTR ; S = 1 32622 ;
+K = DSCAN ;
+ S = 1 20 ;
+ S = 2 7  ;
+ S = 3 E  ;
+ S = 4 1  ;
+
+R -----------------------------------------------;
+R  LINE  GPG_FAC    SJOINT    INF_LAYER(1)       ;
+R  LINE  GPG_FAC    EDGENODE  INF_LAYER(1)       ;
+R -----------------------------------------------;
+K = DSTAT ; S = 1 -20 ; S = 2 2 ; K = DSTA1 ;
+K = DSTAT ; S = 1  20 ; S = 2 2 ; S = 3 3 749 ; S = 4 E ;
+K = DSTA1 ;
+K = DENTR ; S = 1 32623 ;
+K = DSCAN ;
+ S = 1 20 ;
+ S = 2 7  ;
+ S = 3 E  ;
+ S = 4 1  ;
+
+R -----------------------------------------------;
+R  LINE  GPG_FAC    MVFEEDER  INF_LAYER(1)       ;
+R -----------------------------------------------;
+K = DSTAT ; S = 1 -20 ; S = 2 7 ; K = DSTA1 ;
+K = DSTAT ; S = 1  20 ; S = 2 7 ; S = 3 3 404 ; S = 4 E ;
+K = DSTA1 ;
+K = DENTR ; S = 1 32624 ;
+K = DSCAN ;
+ S = 1 20 ;
+ S = 2 7  ;
+ S = 3 E  ;
+ S = 4 1  ;
+
+
+R -----------------------------------------------;
+R  LINE  GPG_FAC    LAND      INF_LAYER(1)       ;
+R -----------------------------------------------;
+K = DSTAT ; S = 1 -20 ; S = 2 7 ; K = DSTA1   ;
+K = DSTAT ; S = 1  20 ; S = 2 7 ;
+K = DSTA1 ;
+K = DENTR ; S = 1 32624 ;
+K = DSCAN ;
+ S = 1 20 ;
+ S = 2 7  ;
+ S = 4 1  ;
+
+
+
+
+
+K = DPMSG ; S = 1 'Number of FAC. = ' ; S = 2  FEAT.NUM ;
+K = MGOSB ; S = 1 CLOSEINF ;
+K = DNORM ; S = 1 COREXT   ; S = 2 0  ;
+K = MDOCD ; S = 1 INFOUT   ;
+
+
+
+R ...................................................................... ;
+R ................ ;
+  MSUB  INFSYMB    ;
+R ................ ;
+R ...................................................................... ;
+
+
+K = XPUNX ;
+ S = 3 0        ;
+ S = 4 FEAT.ROW ;
+ S = 5 1 ;
+ S = 6 0 ;
+
+K = MEXIT ;
+
+
+
+R ...................................................................... ;
+R ................ ;
+  MSUB  OPENINF    ;
+R ................ ;
+R ...................................................................... ;
+
+R  Extarct file  ( Path / Name / Exstension )    ;
+K = DSET   ; S = 1 &AIXFILE.1  ; S = 2 '.'       ;
+K = DSET   ; S = 1 &AIXFILE.2  ; S = 2 'gpg2inf' ;
+K = DSET   ; S = 1 &AIXFILE.3  ; S = 2 'inf'     ;
+
+R  AIX  file  Allocation  ;
+K = DNORM  ; S = 1 XPFILE  ; S = 2 2  ;
+K = CLOSE  ; S = 1   2     ;
+K = XALRM  ; S = 7   2     ; S = 4 0  ;
+
+K = MEXIT ;
+
+
+R ...................................................................... ;
+R ................ ;
+  MSUB  CLOSEINF   ;
+R ................ ;
+R ...................................................................... ;
+
+R Rewind / Rename / Close UNIT 2 ( fort.2) ;
+
+K = XRWND  ; S = 1   2   ;
+K = CLOSE  ; S = 1   2   ;
+K = XALMV  ;
+  S = 1   AIXFILE. ;
+  S = 3      0     ;
+  S = 4      0     ;
+  S = 7      2     ;
+
+K = MEXIT ;
+

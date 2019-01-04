@@ -1,0 +1,21 @@
+
+ clear
+ echo connecting to DB : [ $1 ]
+
+ db2 connect to $1
+
+ db2 "import from $1.EXPORT/dbase.ixf         of ixf  insert into dbase        "
+ db2 "import from $1.EXPORT/features.ixf      of ixf  insert into features     "
+ db2 "import from $1.EXPORT/coordinates.ixf   of ixf  insert into coordinates  "
+ db2 "import from $1.EXPORT/text.ixf          of ixf  insert into text         "
+ db2 "import from $1.EXPORT/layer.ixf         of ixf  insert into layer        "
+ db2 "import from $1.EXPORT/connectivity.ixf  of ixf  insert into connectivity "
+
+ db2 "import from $1.EXPORT/diststn.ixf       of ixf  insert into diststn      "
+ db2 "import from $1.EXPORT/mvfeeder.ixf      of ixf  insert into mvfeeder     "
+ db2 "import from $1.EXPORT/grid.ixf          of ixf  insert into grid         "
+
+ db2 "import from $1.EXPORT/node.ixf          of ixf  insert into node         "
+ db2 "import from $1.EXPORT/street.ixf        of ixf  insert into street       "
+
+ db2 connect reset

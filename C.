@@ -1,0 +1,73 @@
+# use -qstrict to prevent agressive optimization
+
+clear
+
+gcc -c  geoplot.c        -O3
+gcc -c  geodxfio.c       -O3
+gcc -c  geomatch.c       -O3
+gcc -c  geolocate.c      -O3
+gcc -c  geodbname.c      -O3
+gcc -c  geofsb.c         -O3
+gcc -c  geotransfer.c    -O3
+gcc -c  geoprojection.c  -O3
+gcc -c  geolayer.c       -O3
+
+
+db2 connect to geoinfo 
+
+db2 prep geoedit.sqc bindfile  QUERYOPT 9  BLOCKING ALL
+gcc -c geoedit.c   -O3
+
+read aa 
+
+
+db2 prep geotrace.sqc bindfile QUERYOPT 9  BLOCKING ALL
+gcc -c  geotrace.c -I/usr/lpp/db2_02_01/include -O3
+
+db2 prep geoinfo.sqc bindfile  QUERYOPT 9  BLOCKING ALL
+gcc -c geoinfo.c -I/usr/lpp/db2_02_01/include   -O3
+
+
+gcc -ogeoinfo  geoinfo.o                      \
+	      geoedit.o                      \
+	      geoplot.o                      \
+	      geodxfio.o                     \
+	      geomatch.o                     \
+	      geolocate.o                    \
+	      geodbname.o                    \
+	      geofsb.o                       \
+	      geotransfer.o                  \
+	      geoprojection.o                \
+	      geotrace.o                     \
+	      geolayer.o                     \
+	      util.o                         \
+	      -ldb2                          \
+	      -L/usr/lpp/db2_02_01/lib       \
+	      -lXm -lXt -lX11 -lm            \
+
+
+
+db2  bind geoedit.bnd  QUERYOPT 9  BLOCKING ALL
+db2  bind geotrace.bnd QUERYOPT 9  BLOCKING ALL
+db2  bind geoinfo.bnd  QUERYOPT 9  BLOCKING ALL
+
+
+db2 connect reset
+
+strip geoinfo
+geoinfo
+
+
+
+#  --------------------------------------------------------
+#
+#  GRANT should run ONCE ONLY
+#
+#  db2 "grant EXECUTE ON PACKAGE geoinfo.GEOINFO  to PUBLIC"
+#  db2 "grant EXECUTE ON PACKAGE geoinfo.GEOEDIT  to PUBLIC"
+#  db2 "grant EXECUTE ON PACKAGE geoinfo.GEOTRACE to PUBLIC"
+
+# db2 "bind geoedit.bnd  GRANT PUBLIC"
+# db2 "bind geoinfo.bnd  GRANT PUBLIC"
+
+#  --------------------------------------------------------

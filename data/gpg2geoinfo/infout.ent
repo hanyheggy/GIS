@@ -1,0 +1,377 @@
+ENTPL = INFOUT  USING (SYSTEM) ;
+
+
+R ---------------------------------------------------------------;
+R !   Eng. Hany Heggy   (20/6/95)                               !;
+R !   Entity def. to be used as a working variable              !;
+R ---------------------------------------------------------------;
+  FACDEF(2101) = VAR      TYPE = 5   LAYID=$      KEY=SYS        ;
+R ---------------------------------------------------------------;
+  FIELD(1)    = COUNT     FULL      DEFVAL = 0        ;
+  FIELD(2)    = I         FULL      DEFVAL = 0        ;
+  FIELD(3)    = NAME      CHAR(48)  DEFVAL = 'aaa'    ;
+  FIELD(4)    = UNIT      FULL      DEFVAL = 10       ;
+  FIELD(5)    = SYMB      HALF      DEFVAL = 270      ;
+  FIELD(6)    = CLASS     HALF      DEFVAL = 101      ;
+  FIELD(7)    = FACID     HALF      DEFVAL = 100      ;
+  FIELD(8)    = PICID     HALF      DEFVAL = 100      ;
+  FIELD(9)    = ANGLE     REAL      DEFVAL = 0.0      ;
+  FIELD(10)   = PAN       HALF      DEFVAL = 10       ;
+  FIELD(11)   = NXTPAN    CHAR(5)   DEFVAL = ' '      ;
+  FIELD(12)   = END       HALF      DEFVAL = 0        ;
+  FIELD(13)   = ENDREC    CHAR(4)   DEFVAL = ' END'   ;
+  FIELD(14)   = MODEL     CHAR(3)   DEFVAL = '1  '    ;
+  FIELD(15)   = SCALE     FULL      DEFVAL = 80       ;
+  FIELD(16)   = PHALF     CHAR(4)                     ;
+  FIELD(17)   = LAYERID   CHAR(1)                     ;
+  FIELD(18)   = CODE      CHAR(6)   DEFVAL = '  '     ;
+  FIELD(19)   = XY        FULL(2)                     ;
+  FIELD(20)   = BIT       HALF(2)   DEFVAL = (23,-23) ;
+  FIELD(21)   = COMP      CHAR(40)                    ;
+  FIELD(22)   = LENGTH    HALF                        ;
+  FIELD(23)   = II        HALF                        ;
+  FIELD(24)   = COUNT1    FULL      DEFVAL = 0        ;
+  FIELD(25)   = COUNT2    FULL      DEFVAL = 0        ;
+  FIELD(26)   = SKIP      FULL      DEFVAL = 0        ;
+  FIELD(27)   = ERR       CHAR(1)   DEFVAL = ' '      ;
+  FIELD(28)   = WSSTATUS  CHAR(10)  DEFVAL = ' '      ;
+  FIELD(29)   = WSNAME    CHAR(8)   DEFVAL = ' '      ;
+  FIELD(30)   = USERID    CHAR(8)   DEFVAL = ' '      ;
+  FIELD(31)   = SAVE      HALF      DEFVAL = 0        ;
+  FIELD(32)   = REPTYP    CHAR(4)   DEFVAL = '1   '   ;
+  FIELD(33)   = OLD       CHAR(6)   DEFVAL = '  '     ;
+  FIELD(34)   = COLOR     HALF      DEFVAL = 1        ;
+  FIELD(35)   = TOP       REAL      DEFVAL = 0.0      ;
+  FIELD(36)   = BOT       REAL      DEFVAL = 0.0      ;
+  FIELD(37)   = FTEXT     HALF      DEFVAL = 1        ;
+  FIELD(38)   = SIZE      FULL      DEFVAL = 2000     ;
+  FIELD(39)   = CODE1     CHAR(2)   DEFVAL = '  '     ;
+  FIELD(40)   = CODE2     CHAR(4)   DEFVAL = '    '   ;
+  FIELD(41)   = PLOT      CHAR(3)   DEFVAL = 'off'    ;
+  FIELD(42)   = THEME     CHAR(3)   DEFVAL = 'off'    ;
+  FIELD(43)   = SUBSTN1   CHAR(12)  DEFVAL = '   '    ;
+  FIELD(44)   = SUBSTN2   CHAR(12)  DEFVAL = '   '    ;
+  FIELD(45)   = SUBSTN3   CHAR(12)  DEFVAL = '   '    ;
+  FIELD(46)   = SUBSTN4   CHAR(12)  DEFVAL = '   '    ;
+ GROUP = REG  COUNT(4) ;
+  FIELD(47)   = REGXY     FULL(2)                     ;
+ ENDGROUP = REG        ;
+  FIELD(48)   = FDRNUM1   CHAR(12)  DEFVAL = '   '    ;
+  FIELD(49)   = FDRNUM2   CHAR(12)  DEFVAL = '   '    ;
+  FIELD(50)   = CURSOR    REAL      DEFVAL = 0.0      ;
+  FIELD(51)   = SCREEN    REAL(4)   DEFVAL = 0.0      ;
+ GROUP = SUBSTATN  COUNT(255) ;
+  FIELD(52)   = SUBXY     FULL(2)   DEFVAL = (0,0)    ;
+ ENDGROUP = SUBSTATN        ;
+  FIELD(53)   = SPT       HALF      DEFVAL = 1        ;
+  FIELD(54)   = GOTO      HALF      DEFVAL = 1        ;
+  FIELD(55)   = BRANCH    HALF      DEFVAL = 1        ;
+  FIELD(56)   = GRDSTNID  CHAR(12)  DEFVAL = '   '    ;
+  FIELD(57)   = XYEND1    FULL(2)                     ;
+  FIELD(58)   = XYEND2    FULL(2)                     ;
+  FIELD(59)   = VOLT1     CHAR(5)                     ;
+  FIELD(60)   = VOLT2     CHAR(5)                     ;
+  FIELD(61)   = HELP      CHAR(1)   DEFVAL = ' '      ;
+  FIELD(62)   = TEXT      CHAR(8)  DEFVAL = ' '      ;
+ GROUP = REPEATED  COUNT(100) ;
+  FIELD(63)   = SUBNAME   CHAR(12)  DEFVAL = ' '      ;
+  FIELD(64)   = SUBNRPT   HALF      DEFVAL = 0        ;
+ ENDGROUP = REPEATED        ;
+  FIELD(65)   = SNAME     CHAR(12)  DEFVAL = ' '      ;
+  FIELD(66)   = STATUS    CHAR(2)   DEFVAL = '  '     ;
+  FIELD(67)   = III       HALF                        ;
+
+
+R ---------------------------------------------------------------;
+R !   Eng. Hany Heggy   (29/11/97)                              !;
+R !   Entity def. to handle IFF2INF                             !;
+R ---------------------------------------------------------------;
+  FACDEF(2140) = FEAT     TYPE = 5   LAYID=$      KEY=SYS        ;
+R ---------------------------------------------------------------;
+  FIELD(1)   = NUM       FULL       DEFVAL = 0        ;
+  FIELD(2)   = CODE      CHAR(8)    DEFVAL = ' '      ;
+  FIELD(3)   = TYPE      HALF       DEFVAL = 1        ;
+  FIELD(4)   = LAYER     HALF       DEFVAL = 1        ;
+  FIELD(5)   = NETWORK   HALF       DEFVAL = 1        ;
+  FIELD(6)   = DISPLAYD  CHAR(1)    DEFVAL = 'Y'      ;
+  FIELD(7)   = SELECTAB  CHAR(1)    DEFVAL = 'Y'      ;
+  FIELD(8)   = HASATTRB  CHAR(1)    DEFVAL = 'Y'      ;
+  FIELD(9)   = HASTEXT   CHAR(1)    DEFVAL = 'N'      ;
+  FIELD(10)  = COLOR     HALF                         ;
+  FIELD(11)  = XYBASE    FULL(2)                      ;
+  FIELD(12)  = SYMBNO    HALF       DEFVAL = 0        ;
+  FIELD(13)  = SYMBSIZE  HALF       DEFVAL = 0        ;
+  FIELD(14)  = SYMBANGL  HALF       DEFVAL = 0        ;
+  FIELD(15)  = XYCOUNT   HALF                         ;
+  FIELD(16)  = XY        FULL(2)                      ;
+  FIELD(17)  = ROW       CHAR(68)   DEFVAL = ' '      ;
+
+R ---------------------------------------------------------------;
+R !   Eng. Hany Heggy   (29/11/97)                              !;
+R !   Entity def. to handle XPUNX                               !;
+R ---------------------------------------------------------------;
+  FACDEF(2150) = F      TYPE = 5   LAYID=$      KEY=SYS         ;
+  FIELD(1)   = LENGTH    FULL       DEFVAL = 0        ;
+  FIELD(2)   = FORMAT    CHAR(32)   DEFVAL = ' '      ;
+
+
+
+
+R ---------------------------------------------------------------;
+R NOTE  GPG 2.1.1 ALLOW 20 LINE PER LOGICAL POINT                ;
+R ---------------------------------------------------------------;
+R ----------------------------------------------------------------;
+  PTGDEF(32620); R  INFOUT GRIDSTN   TYPE 1                       ;
+R ----------------------------------------------------------------;
+
+LOGPT(1) = SPT(1)
+ ACTION(1)=1
+ PMCUR
+ ADD      ( &FEAT.NUM      , 1                )
+ SET      ( &FEAT.ROW      , ' '              )
+ SET      ( &FEAT.CODE     , STORE.ENTNAME(,1))
+ SET      ( &FEAT.TYPE     , 1                )
+ SET      ( &FEAT.LAYER    , 1                )
+ SET      ( &FEAT.NETWORK  , 1                )
+ SET      ( &FEAT.COLOR    , 7                )
+ SET      ( &FEAT.SYMBNO   , 1                )
+ SET      ( &FEAT.SYMBSIZE , P.6              )
+ SET      ( &FEAT.SYMBANGL , P.5              )
+ SETBIT   ( 24 , 1  )
+ SETLEVEL ( 7  , 12 )
+ STORE    ( 2 ) ;
+
+LOGPT(2) = SPT(2)  IF  SCAN (PICCODE = 'S')
+ THEN       STOREXY ( &FEAT.XYBASE )
+  DSTR    ( 1 &FEAT.ROW(1)    2 FEAT.NUM       )
+  DSTR    ( 1 &FEAT.ROW(9)    2 FEAT.CODE      )
+  DSTR    ( 1 &FEAT.ROW(18)   2 FEAT.TYPE      )
+  DSTR    ( 1 &FEAT.ROW(20)   2 FEAT.LAYER     )
+  DSTR    ( 1 &FEAT.ROW(22)   2 FEAT.NETWORK   )
+  DSTR    ( 1 &FEAT.ROW(24)   2 FEAT.DISPLAYD  )
+  DSTR    ( 1 &FEAT.ROW(26)   2 FEAT.SELECTAB  )
+  DSTR    ( 1 &FEAT.ROW(28)   2 FEAT.HASATTRB  )
+  DSTR    ( 1 &FEAT.ROW(30)   2 FEAT.HASTEXT   )
+  DSTR    ( 1 &FEAT.ROW(32)   2 FEAT.COLOR     )
+  DSTR    ( 1 &FEAT.ROW(34)   2 FEAT.XYBASE(1) )
+  DSTR    ( 1 &FEAT.ROW(44)   2 FEAT.XYBASE(2) )
+  DSTR    ( 1 &FEAT.ROW(54)   2 0              )
+  DSTR    ( 1 &FEAT.ROW(56)   2 FEAT.SYMBNO    )
+  DSTR    ( 1 &FEAT.ROW(60)   2 FEAT.SYMBSIZE  )
+  DSTR    ( 1 &FEAT.ROW(63)   2 FEAT.SYMBANGL  )
+  GOSUB   ( INFSYMB )  EXIT
+ ELSE       EXIT ;
+
+
+R ----------------------------------------------------------------;
+  PTGDEF(32621); R  INFOUT DISTSTN   TYPE 1                       ;
+R ----------------------------------------------------------------;
+
+LOGPT(1) = SPT(1)
+ ACTION(1)=1
+ PMCUR
+ ADD      ( &FEAT.NUM      , 1                )
+ SET      ( &FEAT.ROW      , ' '              )
+ SET      ( &FEAT.CODE     , STORE.ENTNAME(,1))
+ SET      ( &FEAT.TYPE     , 1                )
+ SET      ( &FEAT.LAYER    , 1                )
+ SET      ( &FEAT.NETWORK  , 1                )
+ SET      ( &FEAT.COLOR    , 7                )
+ SET      ( &FEAT.SYMBNO   , 2                )
+ SET      ( &FEAT.SYMBSIZE , 35               )
+ SET      ( &FEAT.SYMBANGL , P.5              )
+ SETBIT   ( 24 , 1  )
+ SETLEVEL ( 7  , 12 )
+ STORE    ( 2 ) ;
+
+LOGPT(2) = SPT(2)  IF  SCAN (PICCODE = 'S')
+ THEN       STOREXY ( &FEAT.XYBASE )
+  DSTR    ( 1 &FEAT.ROW(1)    2 FEAT.NUM       )
+  DSTR    ( 1 &FEAT.ROW(9)    2 FEAT.CODE      )
+  DSTR    ( 1 &FEAT.ROW(18)   2 FEAT.TYPE      )
+  DSTR    ( 1 &FEAT.ROW(20)   2 FEAT.LAYER     )
+  DSTR    ( 1 &FEAT.ROW(22)   2 FEAT.NETWORK   )
+  DSTR    ( 1 &FEAT.ROW(24)   2 FEAT.DISPLAYD  )
+  DSTR    ( 1 &FEAT.ROW(26)   2 FEAT.SELECTAB  )
+  DSTR    ( 1 &FEAT.ROW(28)   2 FEAT.HASATTRB  )
+  DSTR    ( 1 &FEAT.ROW(30)   2 FEAT.HASTEXT   )
+  DSTR    ( 1 &FEAT.ROW(32)   2 FEAT.COLOR     )
+  DSTR    ( 1 &FEAT.ROW(34)   2 FEAT.XYBASE(1) )
+  DSTR    ( 1 &FEAT.ROW(44)   2 FEAT.XYBASE(2) )
+  DSTR    ( 1 &FEAT.ROW(54)   2 0              )
+  DSTR    ( 1 &FEAT.ROW(56)   2 FEAT.SYMBNO    )
+  DSTR    ( 1 &FEAT.ROW(60)   2 FEAT.SYMBSIZE  )
+  DSTR    ( 1 &FEAT.ROW(63)   2 FEAT.SYMBANGL  )
+  GOSUB   ( INFSYMB )  EXIT
+ ELSE       EXIT ;
+
+R ----------------------------------------------------------------;
+  PTGDEF(32622); R  INFOUT MVOPENPT   TYPE 1                      ;
+R ----------------------------------------------------------------;
+
+LOGPT(1) = SPT(1)
+ ACTION(1)=1
+ PMCUR
+ ADD      ( &FEAT.NUM      , 1                )
+ SET      ( &FEAT.ROW      , ' '              )
+ SET      ( &FEAT.CODE     , STORE.ENTNAME(,1))
+ SET      ( &FEAT.TYPE     , 1                )
+ SET      ( &FEAT.LAYER    , 1                )
+ SET      ( &FEAT.NETWORK  , 1                )
+ SET      ( &FEAT.COLOR    , 5                )
+ SET      ( &FEAT.SYMBNO   , 3                )
+ SET      ( &FEAT.SYMBSIZE , P.6              )
+ SET      ( &FEAT.SYMBANGL , P.5              )
+ SETBIT   ( 24 , 1  )
+ SETLEVEL ( 7  , 12 )
+ STORE    ( 2 ) ;
+
+LOGPT(2) = SPT(2)  IF  SCAN (PICCODE = 'S')
+ THEN       STOREXY ( &FEAT.XYBASE )
+  DSTR    ( 1 &FEAT.ROW(1)    2 FEAT.NUM       )
+  DSTR    ( 1 &FEAT.ROW(9)    2 FEAT.CODE      )
+  DSTR    ( 1 &FEAT.ROW(18)   2 FEAT.TYPE      )
+  DSTR    ( 1 &FEAT.ROW(20)   2 FEAT.LAYER     )
+  DSTR    ( 1 &FEAT.ROW(22)   2 FEAT.NETWORK   )
+  DSTR    ( 1 &FEAT.ROW(24)   2 FEAT.DISPLAYD  )
+  DSTR    ( 1 &FEAT.ROW(26)   2 FEAT.SELECTAB  )
+  DSTR    ( 1 &FEAT.ROW(28)   2 FEAT.HASATTRB  )
+  DSTR    ( 1 &FEAT.ROW(30)   2 FEAT.HASTEXT   )
+  DSTR    ( 1 &FEAT.ROW(32)   2 FEAT.COLOR     )
+  DSTR    ( 1 &FEAT.ROW(34)   2 FEAT.XYBASE(1) )
+  DSTR    ( 1 &FEAT.ROW(44)   2 FEAT.XYBASE(2) )
+  DSTR    ( 1 &FEAT.ROW(54)   2 0              )
+  DSTR    ( 1 &FEAT.ROW(56)   2 FEAT.SYMBNO    )
+  DSTR    ( 1 &FEAT.ROW(60)   2 FEAT.SYMBSIZE  )
+  DSTR    ( 1 &FEAT.ROW(63)   2 FEAT.SYMBANGL  )
+  GOSUB   ( INFSYMB )  EXIT
+ ELSE       EXIT ;
+
+
+R ----------------------------------------------------------------;
+  PTGDEF(32623); R  INFOUT EEDGNODE   TYPE 1                      ;
+R ----------------------------------------------------------------;
+
+LOGPT(1) = SPT(1)
+ ACTION(1)=1
+ PMCUR
+ ADD      ( &FEAT.NUM      , 1                )
+ SET      ( &FEAT.ROW      , ' '              )
+ SET      ( &FEAT.CODE     , STORE.ENTNAME(,1))
+ SET      ( &FEAT.TYPE     , 1                )
+ SET      ( &FEAT.LAYER    , 1                )
+ SET      ( &FEAT.NETWORK  , 1                )
+ SET      ( &FEAT.COLOR    , 6                )
+ SET      ( &FEAT.SYMBNO   , 4                )
+ SET      ( &FEAT.SYMBSIZE , P.6              )
+ SET      ( &FEAT.SYMBANGL , P.5              )
+ SETBIT   ( 24 , 1  )
+ SETLEVEL ( 7  , 12 )
+ STORE    ( 2 ) ;
+
+LOGPT(2) = SPT(2)  IF  SCAN (PICCODE = 'S')
+ THEN       STOREXY ( &FEAT.XYBASE )
+  DSTR    ( 1 &FEAT.ROW(1)    2 FEAT.NUM       )
+  DSTR    ( 1 &FEAT.ROW(9)    2 FEAT.CODE      )
+  DSTR    ( 1 &FEAT.ROW(18)   2 FEAT.TYPE      )
+  DSTR    ( 1 &FEAT.ROW(20)   2 FEAT.LAYER     )
+  DSTR    ( 1 &FEAT.ROW(22)   2 FEAT.NETWORK   )
+  DSTR    ( 1 &FEAT.ROW(24)   2 FEAT.DISPLAYD  )
+  DSTR    ( 1 &FEAT.ROW(26)   2 FEAT.SELECTAB  )
+  DSTR    ( 1 &FEAT.ROW(28)   2 FEAT.HASATTRB  )
+  DSTR    ( 1 &FEAT.ROW(30)   2 FEAT.HASTEXT   )
+  DSTR    ( 1 &FEAT.ROW(32)   2 FEAT.COLOR     )
+  DSTR    ( 1 &FEAT.ROW(34)   2 FEAT.XYBASE(1) )
+  DSTR    ( 1 &FEAT.ROW(44)   2 FEAT.XYBASE(2) )
+  DSTR    ( 1 &FEAT.ROW(54)   2 0              )
+  DSTR    ( 1 &FEAT.ROW(56)   2 FEAT.SYMBNO    )
+  DSTR    ( 1 &FEAT.ROW(60)   2 FEAT.SYMBSIZE  )
+  DSTR    ( 1 &FEAT.ROW(63)   2 FEAT.SYMBANGL  )
+  GOSUB   ( INFSYMB )  EXIT
+ ELSE       EXIT ;
+
+
+R ----------------------------------------------------------------;
+  PTGDEF(32624); R  INFOUT MVFEEDER   TYPE 2                      ;
+R ----------------------------------------------------------------;
+
+LOGPT(1) = SPT(1)
+ ACTION(1)=1
+ PMCUR
+ SET      ( &VAR.I        , 0   )
+ SET      ( &VAR.II       , 0   )
+ SET      ( &VAR.III      , 0   )
+ SET      ( &FEAT.ROW     ,' '  )
+ ADD      ( &FEAT.NUM     , 1   )
+ SET      ( &FEAT.CODE    , STORE.ENTNAME(,1))
+ SET      ( &FEAT.TYPE    , 2   )
+ SET      ( &FEAT.LAYER   , 1   )
+ SET      ( &FEAT.NETWORK , 1   )
+ SET      ( &FEAT.COLOR   , P.4 )
+ SET      ( &FEAT.XYCOUNT , 0   )
+ SETBIT   ( 24 , 1  )
+ SETLEVEL ( 7  , 12 )
+ STORE    ( 2 ) ;
+
+LOGPT(2) = SPT(2)  IF SCAN (PICCODE='L' PICCODE='N' PICCODE='A')
+ THEN
+  STOREXY ( &FEAT.XYBASE )
+  DSTR    ( 1 &FEAT.ROW(1)    2 FEAT.NUM      )
+  DSTR    ( 1 &FEAT.ROW(9)    2 FEAT.CODE     )
+  DSTR    ( 1 &FEAT.ROW(18)   2 FEAT.TYPE     )
+  DSTR    ( 1 &FEAT.ROW(20)   2 FEAT.LAYER    )
+  DSTR    ( 1 &FEAT.ROW(22)   2 FEAT.NETWORK  )
+  DSTR    ( 1 &FEAT.ROW(24)   2 FEAT.DISPLAYD )
+  DSTR    ( 1 &FEAT.ROW(26)   2 FEAT.SELECTAB )
+  DSTR    ( 1 &FEAT.ROW(28)   2 FEAT.HASATTRB )
+  DSTR    ( 1 &FEAT.ROW(30)   2 FEAT.HASTEXT  )
+  DSTR    ( 1 &FEAT.ROW(32)   2 FEAT.COLOR    )
+  DSTR    ( 1 &FEAT.ROW(36)   2 FEAT.XYBASE(1))
+  DSTR    ( 1 &FEAT.ROW(46)   2 FEAT.XYBASE(2))
+ ELSE
+  PMSG    ( 'ERROR : Cannot find Base point')
+  EXIT ;
+
+R ........................... ;
+R Count Picture pieces points ;
+R ........................... ;
+LOGPT(3) = SPT(2)  IF SCAN (PICCODE='L' PICCODE='N' PICCODE='A')
+ THEN
+  ADD     ( &FEAT.XYCOUNT , 1 )
+  GOTO    ( 3 ) ;
+
+R ........................... ;
+R Check Number of points >= 1 ;
+R ........................... ;
+LOGPT(4) = SPT(2)  IF GE (FEAT.XYCOUNT 1 )
+ THEN
+  DSTR    ( 1 &FEAT.ROW(56) , 2 FEAT.XYCOUNT )
+  SET     ( &F.LENGTH       , 0              )
+  SET     ( &F.FORMAT       , '(17A4)'       )
+  XPUNX   ( 1 F. ,3 0 ,4 FEAT.ROW ,5 1 ,6 0  )
+ ELSE
+  PMSG    ( 'ERROR : Number of Coord = ' FEAT.XYCOUNT )
+  EXIT ;
+
+R ........................... ;
+R Escape Base point           ;
+R ........................... ;
+LOGPT(5) = SPT(1)  SETLEVEL (7,12)   STORE (3) ;
+LOGPT(6) = SPT(3)  IF SCAN (PICCODE='L' PICCODE='N' PICCODE='A')
+ THEN
+  SET     ( &F.LENGTH ,   0      )
+  SET     ( &F.FORMAT , '(2I12)' )
+ ELSE
+  EXIT ;
+
+R ........................... ;
+R Punch XY Coordinates        ;
+R ........................... ;
+LOGPT(7) = SPT(3)  IF SCAN (PICCODE='L' PICCODE='N' PICCODE='A')
+ THEN
+  ADD     ( &VAR.I , 1 )
+  STOREXY ( &FEAT.XY   )
+  XPUNX   ( 1 F.,3 0,4 FEAT.XY(1),4 FEAT.XY(2),5 1,6 0 )
+  GOTO    ( 7 )
+ ELSE
+  EXIT ;

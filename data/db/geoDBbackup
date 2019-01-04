@@ -1,0 +1,8 @@
+
+ clear
+ echo Backing up DB [ $1 ]  on dir [ $2 ]
+
+
+ db2 "BACKUP DATABASE $1 to $2  "
+
+# db2 "BACKUP DATABASE $1 user geoinfo using hfh231267 to $2 "

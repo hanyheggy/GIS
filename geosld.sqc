@@ -1,0 +1,1647 @@
+/*------------------------------------------------------------------------*/
+/*                               ( sld.sqc )                              */
+/*------------------------------------------------------------------------*/
+
+/*------------------------------------------------------------------------*/
+/*                          Standard Include Files                        */
+/*------------------------------------------------------------------------*/
+#include "geoinfo.h"
+#include <sqlenv.h>
+#include <sqlda.h>
+
+// #define CHECKERR(CE_STR) if(check_error (CE_STR, &sqlca) != 0) printf("error");
+
+EXEC SQL INCLUDE SQLCA;
+
+/*------------------------------------------------------------------------*/
+/*                           Functions Prototypes                         */
+/*------------------------------------------------------------------------*/
+void run_sld_logic()     ;
+void get_first_seg()     ;
+void get_other_seg()     ;
+void get_branch()        ;
+void print_data()        ;
+
+void create_sld()        ;
+void add_label()         ;
+void add_fdr()           ;
+void add_sub()           ;
+void add_oppt()          ;
+int  get_last_xy()       ;
+
+void trace_net()         ;
+void get_connected_nan() ;
+
+/*------------------------------------------------------------------------*/
+/*                           Widget Definition                            */
+/*------------------------------------------------------------------------*/
+
+
+
+/*------------------------------------------------------------------------*/
+/*                   Global Variable Definition                           */
+/*------------------------------------------------------------------------*/
+EXEC SQL BEGIN DECLARE SECTION;
+   long    number              ;  /* Trace Module      */
+   long    conn_feat           ;  /* Trace Module      */
+   long    conn_feat1          ;  /* Trace Module      */
+   long    conn_feat2          ;  /* Trace Module      */
+   long    conn_feat3          ;  /* Trace Module      */
+   char    grid    [13]        ;  /* Trace Module      */
+   char    code    [13]        ;  /* Trace Module      */
+   char    code1   [13]        ;  /* Trace Module      */
+
+   char    feat_code[13]       ;  /* Trace Module      */
+   long    type                ;  /* Trace Module      */
+
+   char    db_name [31]        ;  /* SLD Input Data    */
+   char    grid_id [13]        ;  /* SLD Input Data    */
+   char    fdr_id  [13]        ;  /* SLD Input Data    */
+
+   long    feat_num            ;  /* SLD Module        */
+   long    grid_feat_num       ;  /* SLD Module        */
+   long    fdr_feat_num        ;  /* SLD Module        */
+   char    fdr_feat_name [13]  ;  /* SLD Module        */
+
+   long    s_node              ;  /* SLD Module        */
+   long    e_node              ;  /* SLD Module        */
+   long    other               ;  /* SLD Module        */
+   char    from    [13]        ;  /* SLD Module        */
+   char    lmr1    [2]         ;  /* SLD Module        */
+   char    to      [13]        ;  /* SLD Module        */
+   char    lmr2    [2]         ;  /* SLD Module        */
+   char    oh_ugd  [4]         ;  /* SLD Module        */
+   long    kva                 ;  /* SLD Module        */
+   char    subtype [21]        ;  /* SLD Module        */
+EXEC SQL END DECLARE SECTION;
+
+
+int    iiii              ;  /* Counters                          */
+int    n_segment         ;  /* Number of segments                */
+int    n_fdr             ;  /* Number of Feeders                 */
+int    branch_counter    ;  /* Terminate Branch Loop Counter     */
+char   LMR [3]           ;  /*                                   */
+
+int    test              ;  /* Sort test flag                    */
+char   c_buffer [30]     ;  /* Sort Charcter Buffer              */
+
+int   total              ;
+int   kk                 ;
+int   k                  ;
+int   found              ;
+int   stack_count        ;
+int   conn_stack [10000] ;
+int   sld_x              ;
+int   sld_y              ;
+int   last_x             ;
+int   last_y             ;
+
+typedef struct
+ {
+  char  name    [13] ;
+  char  from    [13] ;
+  char  to      [13] ;
+  char  lmr1    [2]  ;
+  char  lmr2    [2]  ;
+  char  type    [4]  ;
+  char  branch  [2]  ;
+  int   kva          ;
+  char  openpt  [2]  ;
+  char  subtype [12] ;
+  char  grid    [12] ;
+  int   last_x       ;
+  int   last_y       ;
+ }  MVfeeder1 ;
+
+typedef struct
+ {
+  int   feat_num    ;
+  char  name [13]   ;
+ }  MVfeeder2 ;
+
+
+MVfeeder1  fdr  [250]     ;   /* sld_logic input array    */
+MVfeeder1  fdr1 [250]     ;   /* sld_logic sorted arry_1  */
+MVfeeder1  fdr2 [250]     ;   /* sld_logic sorted arry_2  */
+MVfeeder1  fdr3 [250]     ;   /* sld_logic sorted arry_3  */
+
+MVfeeder2  fdr_list [100] ;   /* 1st Feeder segment array */
+
+
+/*------------------------------------------------------------------------*/
+/*                                main()                                  */
+/*------------------------------------------------------------------------*/
+main(int argc, char *argv[])
+{
+ /*-----------------------------------*/
+ /* Get Grid/Feeder from Command line */
+ /*-----------------------------------*/
+
+ if ( argc == 4 )
+    {
+     sscanf(argv[1],"%s",db_name);
+     sscanf(argv[2],"%s",grid_id);
+     sscanf(argv[3],"%s",fdr_id );
+    }
+ else
+    {
+     printf("SLD Error : Missing Database name / Grid / feeder name(s) !\n");
+     return ;
+    }
+
+ /*-------------------------------------------------------*/
+ /* Connecting to Database & Check Gridstation Exsistance */
+ /*-------------------------------------------------------*/
+
+ // strcpy(db_name,"electric");
+
+ EXEC SQL CONNECT TO :db_name ;
+ printf("SLD INFO  : Connecting to Database [%s] ..\n",db_name);
+
+
+ if ( SQLCODE == -1013 )
+    {
+     printf("SLD Error : DataBase [%s] not found ! \n",db_name);
+     return ;
+    }
+ if ( SQLCODE == -1032 )
+    {
+     printf("SLD Error : DataBase Engine is not started ! \n");
+     return ;
+    }
+
+ EXEC SQL SELECT FEAT_NUM
+	  INTO   :grid_feat_num
+	  FROM   GRID
+	  WHERE  GRID_ID = :grid_id ;
+
+ if ( SQLCODE == 100)
+    {
+     printf("SLD Error : Grid [%s] not found \n",grid_id );
+     return;
+    }
+ else if ( SQLCODE != 0 )
+    {
+     printf("SLD Error : Reading from grid, SQLCODE = %d\n",SQLCODE);
+     return;
+    }
+
+ /*----------------------------------------------*/
+ /* Get feature_num of Feeders Connected to Grid */
+ /*----------------------------------------------*/
+
+ EXEC SQL DECLARE FDR1 CURSOR FOR
+	  SELECT  ARC
+	  FROM    CONNECTIVITY
+	  WHERE   S_NODE = :grid_feat_num
+	  FOR     READ ONLY;
+ // CHECKERR ("DECLARE CURSOR");
+
+
+ EXEC SQL OPEN FDR1 ;
+
+ i = 0 ;
+ do {
+     EXEC SQL FETCH FDR1 INTO :fdr_feat_num ;
+
+     if ( SQLCODE == 100)
+	{
+	 break ;
+	}
+     else if ( SQLCODE != 0 )
+	{
+	 printf("SLD Error : Reading from connectivity, SQLCODE = %d\n",SQLCODE);
+	 break ;
+	}
+
+
+     fdr_list[++i].feat_num = fdr_feat_num ;
+
+     EXEC SQL SELECT FEEDER_NUM
+	      INTO   :fdr_feat_name
+	      FROM   MVFEEDER
+	      WHERE  FEAT_NUM = :fdr_feat_num ;
+
+     if ( SQLCODE == 0 )
+	{
+	 sscanf (fdr_feat_name,"%s",&fdr_list[i].name) ;
+	}
+     else
+	{
+	 strcpy (fdr_list[i].name," ") ;
+	 printf("SLD Error : Reading from mvfeeder, SQLCODE = %d\n",SQLCODE);
+	}
+
+    } while ( 1 );
+
+ n_fdr = i ;
+
+
+ printf("SLD INFO : Number of Connected Feeders at Grid = %d\n",n_fdr);
+
+ for ( i=1 ; i<=n_fdr ; i++ )
+     {
+      printf("SLD INFO  : Feeder  feat_num = %d  feeder_id = %s\n"
+	     ,fdr_list[i].feat_num ,fdr_list[i].name) ;
+     }
+
+ /*------------------------------------*/
+ /* Sorting Feeders in ascending order */
+ /*------------------------------------*/
+
+ for ( i=1 ; i<=n_fdr ; i++ )
+     {
+      for ( ii=1 ; ii<n_fdr ; ii++ )
+	  {
+	   test = strcmp ( fdr_list[ii].name , fdr_list[ii+1].name );
+
+	   if ( test  >  0 )      /*  ascending order   */
+	      {
+	       strcpy ( c_buffer            , fdr_list[ii].name   );
+	       strcpy ( fdr_list[ii].name   , fdr_list[ii+1].name );
+	       strcpy ( fdr_list[ii+1].name , c_buffer            );
+	      }
+	  }
+     }
+
+ /*--------------------------------------------*/
+ /* Get Segments of each Feeder & Process data */
+ /*--------------------------------------------*/
+
+ sld_x = 10000 ;
+ sld_y = 10000 ;
+
+ if ( strcmp (fdr_id,"ALL") == 0 )      /*  ALL FEEDERS  */
+    {
+     total = n_fdr ;
+
+     for ( kk=1 ; kk<=total ; kk++ )
+	 {
+	  fdr_feat_num = fdr_list[kk].feat_num         ;
+	  strcpy ( fdr_feat_name , fdr_list[kk].name ) ;
+
+	  printf("SLD INFO  : Porcessing Feeder [%s]\n",fdr_feat_name );
+
+	  trace_net (fdr_feat_num,"grid");
+
+	  for ( i=1,j=0 ; i<=conn_count ; i++ )
+	      {
+	       fdr_feat_num = conn_list[i] ;
+
+	       EXEC SQL SELECT S_NODE  , E_NODE  , OTHER
+			INTO   :s_node , :e_node , :other
+			FROM   CONNECTIVITY
+			WHERE  ARC = :fdr_feat_num ;
+
+	       if ( SQLCODE == 100)
+		  {
+		   continue ;
+		  }
+	       else if ( SQLCODE != 0 )
+		  {
+		   printf("ERROR : Reading from connectivity, SQLCODE = %d\n",SQLCODE);
+		   return ;
+		  }
+	       else
+		  {
+
+		   EXEC SQL SELECT UG_OH   , LMR1  , LMR2  , GRID_ID
+			    INTO   :oh_ugd , :lmr1 , :lmr2 , :grid
+			    FROM   MVFEEDER
+			    WHERE  FEAT_NUM = :fdr_feat_num ;
+
+		   EXEC SQL SELECT SUB_ID
+			    INTO   :from
+			    FROM   DISTSTN
+			    WHERE  FEAT_NUM = :s_node ;
+		   if ( SQLCODE == 100)
+		      {
+		       EXEC SQL SELECT GRID_ID
+				INTO   :from
+				FROM   GRID
+				WHERE  FEAT_NUM = :s_node ;
+		      }
+
+		   EXEC SQL SELECT SUB_ID , KVA  , TYPE
+			    INTO   :to    , :kva , :subtype
+			    FROM   DISTSTN
+			    WHERE  FEAT_NUM = :e_node ;
+
+		   if ( SQLCODE == 100 && other != 0 )
+		      {
+		       EXEC SQL SELECT SUB_ID , KVA  , TYPE
+			        INTO   :to    , :kva , :subtype
+			        FROM   DISTSTN
+			        WHERE  FEAT_NUM = :other ;
+
+		       strcpy (fdr[++j].openpt , "Y" );
+		      }
+		    else
+		      {
+		       strcpy (fdr[++j].openpt , "N" );
+		      }
+
+		   strcpy (fdr[j].name , fdr_feat_name );
+		   strcpy (fdr[j].from   , from        );
+		   strcpy (fdr[j].lmr1   , lmr1        );
+		   strcpy (fdr[j].to     , to          );
+		   strcpy (fdr[j].lmr2   , lmr2        );
+		   strcpy (fdr[j].type   , oh_ugd      );
+		   strcpy (fdr[j].branch , "N"         );
+		   strcpy (fdr[j].subtype, subtype     );
+		   strcpy (fdr[j].grid   , grid        );
+
+		   fdr[j].kva = kva ;
+		  }
+
+	      }
+
+	  n_segment = j ;
+	  run_sld_logic();
+	  print_data();
+	  sld_x += 250   ;
+	  sld_y  = 10000 ;
+	  create_sld();
+	 }
+    }
+
+ else     /* -------------------- ONE FEEDER ONLY --------------------- */
+
+    {
+     test = 0 ;
+
+     for ( i=1 ; i<=n_fdr ; i++ )
+	 {
+	  if ( strcmp (fdr_id,fdr_list[i].name) == 0 )
+	     {
+	      strcpy ( fdr_feat_name , fdr_list[i].name ) ;
+	      fdr_feat_num = fdr_list[i].feat_num  ;
+	      test = 1 ;
+	      goto skip ;
+	     }
+	 }
+
+     skip:
+     if ( test == 0 )
+	{
+	 printf("SLD INFO  : Feeder [%s] not found \n",fdr_id );
+	 exit(1) ;
+	}
+     else
+	{
+	 printf("SLD INFO  : Porcessing Feeder [%s] \n",fdr_feat_name );
+	}
+
+
+     trace_net (fdr_feat_num,"grid");
+
+
+     for ( i=1,j=0 ; i<=conn_count ; i++ )
+	 {
+	  fdr_feat_num = conn_list[i] ;
+
+	  EXEC SQL SELECT S_NODE  , E_NODE  , OTHER
+		   INTO   :s_node , :e_node , :other
+		   FROM   CONNECTIVITY
+		   WHERE  ARC = :fdr_feat_num ;
+
+	  if ( SQLCODE == 100)
+	     {
+	      continue ;
+	     }
+	  else if ( SQLCODE != 0 )
+	     {
+	      printf("ERROR : Reading from connectivity [SQLCODE] = %d\n",SQLCODE);
+	      return ;
+	     }
+	  else
+	     {
+	      EXEC SQL SELECT UG_OH   , LMR1  , LMR2  , GRID_ID
+		       INTO   :oh_ugd , :lmr1 , :lmr2 , :grid
+		       FROM   MVFEEDER
+		       WHERE  FEAT_NUM = :fdr_feat_num ;
+
+	      EXEC SQL SELECT SUB_ID
+		       INTO   :from
+		       FROM   DISTSTN
+		       WHERE  FEAT_NUM = :s_node ;
+
+	      if ( SQLCODE == 100)
+		 {
+		  EXEC SQL SELECT GRID_ID
+			   INTO   :from
+			   FROM   GRID
+			   WHERE  FEAT_NUM = :s_node ;
+		 }
+
+
+	      EXEC SQL SELECT SUB_ID , KVA  , TYPE
+		       INTO   :to    , :kva , :subtype
+		       FROM   DISTSTN
+		       WHERE  FEAT_NUM = :e_node ;
+
+              if ( SQLCODE == 100 && other != 0 )
+	         {
+	          EXEC SQL SELECT SUB_ID , KVA  , TYPE
+	                   INTO   :to    , :kva , :subtype
+		           FROM   DISTSTN
+		           WHERE  FEAT_NUM = :other ;
+
+		       strcpy (fdr[++j].openpt , "Y" );
+		      }
+		    else
+		      {
+		       strcpy (fdr[++j].openpt , "N" );
+		      }
+
+		   strcpy (fdr[j].name , fdr_feat_name );
+		   strcpy (fdr[j].from   , from        );
+		   strcpy (fdr[j].lmr1   , lmr1        );
+		   strcpy (fdr[j].to     , to          );
+		   strcpy (fdr[j].lmr2   , lmr2        );
+		   strcpy (fdr[j].type   , oh_ugd      );
+		   strcpy (fdr[j].branch , "N"         );
+		   strcpy (fdr[j].subtype, subtype     );
+		   strcpy (fdr[j].grid   , grid        );
+
+		   fdr[j].kva = kva ;
+	     }
+
+	 }
+
+     n_segment = j ;
+     run_sld_logic();
+     print_data();
+     create_sld();
+    }
+
+
+ /*-------------------------------------------------------------*/
+ /*                    save_binary_file                         */
+ /*-------------------------------------------------------------*/
+
+ DB_unit = 3     ;
+ x_min   = 10000 ;
+ y_min   = 9000  ;
+ x_max   = 11500 ;
+ y_max   = 10500 ;
+
+ fp_o = fopen ("sld.infb","wb");
+ if  ( fp_o == NULL )
+     {
+      printf ("\nERROR : Can't open output file  !");
+      return ;
+     }
+
+ printf ("\nINFO  : Processing output file ..");
+
+ if ( DB_unit == 1 ) strcpy (DB_unit_name , "MM") ;
+ if ( DB_unit == 2 ) strcpy (DB_unit_name , "CM") ;
+ if ( DB_unit == 3 ) strcpy (DB_unit_name , "DM") ;
+ if ( DB_unit == 4 ) strcpy (DB_unit_name , "M" ) ;
+ if ( DB_unit == 5 ) strcpy (DB_unit_name , "KM") ;
+
+ fwrite(&DB_unit_name , sizeof(DB_unit_name) , 1 , fp_o) ;
+ fwrite(&x_min        , sizeof(x_min)        , 1 , fp_o) ;
+ fwrite(&y_min        , sizeof(y_min)        , 1 , fp_o) ;
+ fwrite(&x_max        , sizeof(x_max)        , 1 , fp_o) ;
+ fwrite(&y_max        , sizeof(y_max)        , 1 , fp_o) ;
+
+ for ( i=1 ; i <= feat_count ; i++ )
+     {
+      if ( feat[i].displayed[0] != 'D' && strcmp(feat[i].code,"BSLCLPT") != 0 )
+	 {
+	  fwrite(&feat[i] , sizeof(feat[i]) , 1 , fp_o) ;
+	  if  ( feat[i].xy_count != 0 )
+	      {
+	       for ( ii=1 ; ii<=feat[i].xy_count ; ii++ )
+		   {
+		    fwrite(&x[feat[i].xy+ii],sizeof(x[0]),1,fp_o) ;
+		    fwrite(&y[feat[i].xy+ii],sizeof(y[0]),1,fp_o) ;
+		   }
+	      }
+	  if  ( feat[i].has_text[0] == 'Y' )
+	      {
+
+	       for ( ii=1 ; ii<=feat[i].text_count ; ii++ )
+		   {
+		    fwrite (&text[feat[i].text+ii],sizeof(text[0]),1,fp_o) ;
+		   }
+	      }
+	 }
+     } /* end of for loop */
+
+ fclose(fp_o);
+
+
+
+
+
+
+
+
+
+
+ EXEC SQL CONNECT RESET;
+ // CHECKERR ("CONNECT RESET");
+
+}
+/*---------------------------------------------------------------*/
+/*                       run_sld_logic()                         */
+/*---------------------------------------------------------------*/
+void run_sld_logic()
+{
+ j         = 0 ;
+ i         = 0 ;
+ ii        = 0 ;
+ iii       = 0 ;
+ iiii      = 0 ;
+ n_fdr     = 0 ;
+ branch_counter = 0 ;
+
+ for ( i=1 ; i<=200 ; i++ )
+     {
+      strcpy (fdr1[i].name   ,"1") ;
+      strcpy (fdr1[i].from   ,"1") ;
+      strcpy (fdr1[i].lmr1   ,"1") ;
+      strcpy (fdr1[i].to     ,"1") ;
+      strcpy (fdr1[i].lmr2   ,"1") ;
+      strcpy (fdr1[i].type   ,"1") ;
+      strcpy (fdr1[i].branch ,"1") ;
+      strcpy (fdr1[i].openpt ,"1") ;
+      strcpy (fdr1[i].subtype,"1") ;
+      strcpy (fdr1[i].grid   ,"1") ;
+      fdr1[i].kva = 1              ;
+
+      strcpy (fdr2[i].name   ,"2") ;
+      strcpy (fdr2[i].from   ,"2") ;
+      strcpy (fdr2[i].lmr1   ,"2") ;
+      strcpy (fdr2[i].to     ,"2") ;
+      strcpy (fdr2[i].lmr2   ,"2") ;
+      strcpy (fdr2[i].type   ,"2") ;
+      strcpy (fdr2[i].branch ,"2") ;
+      strcpy (fdr2[i].openpt ,"2") ;
+      strcpy (fdr2[i].subtype,"2") ;
+      strcpy (fdr2[i].grid   ,"2") ;
+      fdr2[i].kva = 2              ;
+
+      strcpy (fdr3[i].name   ,"3") ;
+      strcpy (fdr3[i].from   ,"3") ;
+      strcpy (fdr3[i].lmr1   ,"3") ;
+      strcpy (fdr3[i].to     ,"3") ;
+      strcpy (fdr3[i].lmr2   ,"3") ;
+      strcpy (fdr3[i].type   ,"3") ;
+      strcpy (fdr3[i].branch ,"3") ;
+      strcpy (fdr3[i].openpt ,"3") ;
+      strcpy (fdr3[i].subtype,"3") ;
+      strcpy (fdr3[i].grid   ,"3") ;
+      fdr3[i].kva = 3              ;
+     }
+
+ /*------------------------*/
+ /* Process Data           */
+ /*------------------------*/
+
+ get_first_seg () ;
+
+ if ( ii == 0 )
+    {
+     fprintf (stderr,"run_sld_logic : Cannot find first segment\n");
+     exit(1);
+    }
+
+ get_other_seg  () ;
+
+ get_branch     () ;
+
+ return ;
+}
+/*---------------------------------------------------------------*/
+/*                      get_first_seg ()                         */
+/*---------------------------------------------------------------*/
+void get_first_seg ()
+{
+
+ fprintf (stderr,"run_sld_logic : get_first_seg () \n");
+
+ for (i=1; i<=n_segment; i++)
+     {
+
+      if ( strcmp (fdr[i].from , fdr[i].grid) == 0 )
+	 {
+	  switch(n_fdr)
+	   {
+	    case 0:
+
+	    ii++    ;
+	    n_fdr++ ;
+	    strcpy (fdr1[ii].name   , fdr[i].name)   ; strcpy (fdr[i].name   ," ");
+	    strcpy (fdr1[ii].from   , fdr[i].from)   ; strcpy (fdr[i].from   ," ");
+	    strcpy (fdr1[ii].lmr1   , fdr[i].lmr1)   ; strcpy (fdr[i].lmr1   ," ");
+	    strcpy (fdr1[ii].to     , fdr[i].to  )   ; strcpy (fdr[i].to     ," ");
+	    strcpy (fdr1[ii].lmr2   , fdr[i].lmr2)   ; strcpy (fdr[i].lmr2   ," ");
+	    strcpy (fdr1[ii].type   , fdr[i].type)   ; strcpy (fdr[i].type   ," ");
+	    strcpy (fdr1[ii].branch , fdr[i].branch) ; strcpy (fdr[i].branch ," ");
+	    strcpy (fdr1[ii].openpt , fdr[i].openpt ); strcpy (fdr[i].openpt ," ");
+	    strcpy (fdr1[ii].subtype, fdr[i].subtype); strcpy (fdr[i].subtype," ");
+	    strcpy (fdr1[ii].grid   , fdr[i].grid   ); strcpy (fdr[i].grid   ," ");
+	    fdr1[ii].kva = fdr[i].kva ; fdr[i].kva = 0 ;
+	    break ;
+
+	    case 1:
+
+	    iii++   ;
+	    n_fdr++ ;
+	    strcpy (fdr2[iii].name   , fdr[i].name)   ; strcpy (fdr[i].name   ," ");
+	    strcpy (fdr2[iii].from   , fdr[i].from)   ; strcpy (fdr[i].from   ," ");
+	    strcpy (fdr2[iii].lmr1   , fdr[i].lmr1)   ; strcpy (fdr[i].lmr1   ," ");
+	    strcpy (fdr2[iii].to     , fdr[i].to  )   ; strcpy (fdr[i].to     ," ");
+	    strcpy (fdr2[iii].lmr2   , fdr[i].lmr2)   ; strcpy (fdr[i].lmr2   ," ");
+	    strcpy (fdr2[iii].type   , fdr[i].type)   ; strcpy (fdr[i].type   ," ");
+	    strcpy (fdr2[iii].branch , fdr[i].branch) ; strcpy (fdr[i].branch ," ");
+	    strcpy (fdr2[iii].openpt , fdr[i].openpt ); strcpy (fdr[i].openpt ," ");
+	    strcpy (fdr2[iii].subtype, fdr[i].subtype); strcpy (fdr[i].subtype," ");
+	    strcpy (fdr2[iii].grid   , fdr[i].grid   ); strcpy (fdr[i].grid   ," ");
+	    fdr2[iii].kva = fdr[i].kva ; fdr[i].kva = 0 ;
+	    break ;
+
+	    case 2:
+
+	    iiii++  ;
+	    n_fdr++ ;
+	    strcpy (fdr3[iiii].name   , fdr[i].name)   ; strcpy (fdr[i].name   ," ");
+	    strcpy (fdr3[iiii].from   , fdr[i].from)   ; strcpy (fdr[i].from   ," ");
+	    strcpy (fdr3[iiii].lmr1   , fdr[i].lmr1)   ; strcpy (fdr[i].lmr1   ," ");
+	    strcpy (fdr3[iiii].to     , fdr[i].to  )   ; strcpy (fdr[i].to     ," ");
+	    strcpy (fdr3[iiii].lmr2   , fdr[i].lmr2)   ; strcpy (fdr[i].lmr2   ," ");
+	    strcpy (fdr3[iiii].type   , fdr[i].type)   ; strcpy (fdr[i].type   ," ");
+	    strcpy (fdr3[iiii].branch,  fdr[i].branch) ; strcpy (fdr[i].branch ," ");
+	    strcpy (fdr3[iiii].openpt , fdr[i].openpt ); strcpy (fdr[i].openpt ," ");
+	    strcpy (fdr3[iiii].subtype, fdr[i].subtype); strcpy (fdr[i].subtype," ");
+	    strcpy (fdr3[iiii].grid   , fdr[i].grid   ); strcpy (fdr[i].grid   ," ");
+	    fdr3[iiii].kva = fdr[i].kva ; fdr[i].kva = 0 ;
+	    break ;
+	   }
+	 }
+     }
+
+}
+/*---------------------------------------------------------------*/
+/*                       get_other_seg ()                        */
+/*---------------------------------------------------------------*/
+void get_other_seg ()
+{
+
+ fprintf (stderr ,"run_sld_logic : get_other_seg () \n");
+
+ for (j=1; j<=n_segment; j++)
+     {
+
+      for (i=1; i<=n_segment; i++)
+	  {
+	   if ( (ii != 0) && (strcmp (fdr1[ii].to , fdr[i].from) == 0) )
+	      {
+	       ii++  ;
+	       strcpy (fdr1[ii].name   , fdr[i].name)   ; strcpy (fdr[i].name   ," ");
+	       strcpy (fdr1[ii].from   , fdr[i].from)   ; strcpy (fdr[i].from   ," ");
+	       strcpy (fdr1[ii].lmr1   , fdr[i].lmr1)   ; strcpy (fdr[i].lmr1   ," ");
+	       strcpy (fdr1[ii].to     , fdr[i].to  )   ; strcpy (fdr[i].to     ," ");
+	       strcpy (fdr1[ii].lmr2   , fdr[i].lmr2)   ; strcpy (fdr[i].lmr2   ," ");
+	       strcpy (fdr1[ii].type   , fdr[i].type)   ; strcpy (fdr[i].type   ," ");
+	       strcpy (fdr1[ii].branch , fdr[i].branch) ; strcpy(fdr[i].branch  ," ");
+	       strcpy (fdr1[ii].openpt , fdr[i].openpt ); strcpy (fdr[i].openpt ," ");
+	       strcpy (fdr1[ii].subtype, fdr[i].subtype); strcpy (fdr[i].subtype," ");
+	       strcpy (fdr1[ii].grid   , fdr[i].grid   ); strcpy (fdr[i].grid   ," ");
+	       fdr1[ii].kva = fdr[i].kva ; fdr[i].kva = 0 ;
+	      }
+	  }
+
+
+      for (i=1; i<=n_segment; i++)
+	  {
+	   if ( (iii != 0) && (strcmp (fdr2[iii].to , fdr[i].from) == 0) )
+	      {
+	       iii++ ;
+	       strcpy (fdr2[iii].name   , fdr[i].name)   ; strcpy (fdr[i].name   ," ");
+	       strcpy (fdr2[iii].from   , fdr[i].from)   ; strcpy (fdr[i].from   ," ");
+	       strcpy (fdr2[iii].lmr1   , fdr[i].lmr1)   ; strcpy (fdr[i].lmr1   ," ");
+	       strcpy (fdr2[iii].to     , fdr[i].to  )   ; strcpy (fdr[i].to     ," ");
+	       strcpy (fdr2[iii].lmr2   , fdr[i].lmr2)   ; strcpy (fdr[i].lmr2   ," ");
+	       strcpy (fdr2[iii].type   , fdr[i].type)   ; strcpy (fdr[i].type   ," ");
+	       strcpy (fdr2[iii].branch , fdr[i].branch) ; strcpy (fdr[i].branch ," ");
+	       strcpy (fdr2[iii].openpt , fdr[i].openpt ); strcpy (fdr[i].openpt ," ");
+	       strcpy (fdr2[iii].subtype, fdr[i].subtype); strcpy (fdr[i].subtype," ");
+	       strcpy (fdr2[iii].grid   , fdr[i].grid   ); strcpy (fdr[i].grid   ," ");
+	       fdr2[iii].kva = fdr[i].kva ; fdr[i].kva = 0 ;
+	      }
+	  }
+
+
+      for (i=1; i<=n_segment; i++)
+	  {
+	   if ( (iiii != 0) && (strcmp (fdr3[iiii].to , fdr[i].from) == 0) )
+	      {
+	       iiii++ ;
+	       strcpy (fdr3[iiii].name   , fdr[i].name)   ; strcpy (fdr[i].name   ," ");
+	       strcpy (fdr3[iiii].from   , fdr[i].from)   ; strcpy (fdr[i].from   ," ");
+	       strcpy (fdr3[iiii].lmr1   , fdr[i].lmr1)   ; strcpy (fdr[i].lmr1   ," ");
+	       strcpy (fdr3[iiii].to     , fdr[i].to  )   ; strcpy (fdr[i].to     ," ");
+	       strcpy (fdr3[iiii].lmr2   , fdr[i].lmr2)   ; strcpy (fdr[i].lmr2   ," ");
+	       strcpy (fdr3[iiii].type   , fdr[i].type)   ; strcpy (fdr[i].type   ," ");
+	       strcpy (fdr3[iiii].branch , fdr[i].branch) ; strcpy (fdr[i].branch ," ");
+	       strcpy (fdr3[iiii].openpt , fdr[i].openpt ); strcpy (fdr[i].openpt ," ");
+	       strcpy (fdr3[iiii].subtype, fdr[i].subtype); strcpy (fdr[i].subtype," ");
+	       strcpy (fdr3[iiii].grid   , fdr[i].grid   ); strcpy (fdr[i].grid   ," ");
+	       fdr3[iiii].kva = fdr[i].kva ; fdr[i].kva = 0 ;
+	      }
+	  }
+
+
+     }
+
+}
+/*---------------------------------------------------------------*/
+/*                         get_branch ()                         */
+/*---------------------------------------------------------------*/
+void get_branch ()
+{
+ fprintf (stderr ,"run_sld_logic : get_branch () \n");
+
+ fprintf (stderr ,"run_sld_logic : n_segment = %d \n", n_segment );
+ fprintf (stderr ,"run_sld_logic : ii   = %d      \n", ii        );
+ fprintf (stderr ,"run_sld_logic : iii  = %d      \n", iii       );
+ fprintf (stderr ,"run_sld_logic : iiii = %d      \n", iiii      );
+
+ branch_counter++ ;
+
+ if ( ((ii+iii+iiii) >= n_segment) || (branch_counter > n_segment) )
+    {
+     goto end_branch ;
+    }
+
+ for (j=1; j<=n_segment; j++)
+    {
+
+     for (i=1; i<=n_segment; i++)
+	 {
+	  if ( (ii > 0) && (strcmp (fdr1[j].to , fdr[i].from) == 0) )
+	     {
+	      if ( strcmp ( fdr1[ii].to , fdr[i].from) != 0 )
+		   strcpy ( fdr1[ii+1].branch ,"Y" );
+	      ii++  ;
+	      strcpy (fdr1[ii].name   , fdr[i].name)   ; strcpy (fdr[i].name   ," ");
+	      strcpy (fdr1[ii].from   , fdr[i].from)   ; strcpy (fdr[i].from   ," ");
+	      strcpy (fdr1[ii].lmr1   , fdr[i].lmr1)   ; strcpy (fdr[i].lmr1   ," ");
+	      strcpy (fdr1[ii].to     , fdr[i].to  )   ; strcpy (fdr[i].to     ," ");
+	      strcpy (fdr1[ii].lmr2   , fdr[i].lmr2)   ; strcpy (fdr[i].lmr2   ," ");
+	      strcpy (fdr1[ii].type   , fdr[i].type)   ; strcpy (fdr[i].type   ," ");
+	      strcpy (fdr1[ii].openpt , fdr[i].openpt ); strcpy (fdr[i].openpt ," ");
+	      strcpy (fdr1[ii].subtype, fdr[i].subtype); strcpy (fdr[i].subtype," ");
+	      strcpy (fdr1[ii].grid   , fdr[i].grid   ); strcpy (fdr[i].grid   ," ");
+	      fdr1[ii].kva = fdr[i].kva ; fdr[i].kva = 0 ;
+
+	      get_other_seg() ;
+	     }
+
+	  if ( (iii > 0) && (strcmp (fdr2[j].to , fdr[i].from) == 0) )
+	     {
+	      if ( strcmp ( fdr2[iii].to , fdr[i].from) != 0 )
+		 {
+		   strcpy ( fdr2[iii+1].branch ,"Y" );
+		   fprintf (stderr ,"\n   fdr2[j].to  = %s", fdr2[j].to );
+		 }
+	      iii++ ;
+	      strcpy (fdr2[iii].name   , fdr[i].name)   ; strcpy (fdr[i].name   ," ");
+	      strcpy (fdr2[iii].from   , fdr[i].from)   ; strcpy (fdr[i].from   ," ");
+	      strcpy (fdr2[iii].lmr1   , fdr[i].lmr1)   ; strcpy (fdr[i].lmr1   ," ");
+	      strcpy (fdr2[iii].to     , fdr[i].to  )   ; strcpy (fdr[i].to     ," ");
+	      strcpy (fdr2[iii].lmr2   , fdr[i].lmr2)   ; strcpy (fdr[i].lmr2   ," ");
+	      strcpy (fdr2[iii].type   , fdr[i].type)   ; strcpy (fdr[i].type   ," ");
+	      strcpy (fdr2[iii].openpt , fdr[i].openpt ); strcpy (fdr[i].openpt ," ");
+	      strcpy (fdr2[iii].subtype, fdr[i].subtype); strcpy (fdr[i].subtype," ");
+	      strcpy (fdr2[iii].grid   , fdr[i].grid   ); strcpy (fdr[i].grid   ," ");
+	      fdr2[iii].kva = fdr[i].kva ; fdr[i].kva = 0 ;
+
+	      get_other_seg() ;
+	     }
+
+
+	  if ( (iiii > 0) && (strcmp (fdr3[j].to , fdr[i].from) == 0) )
+	     {
+	      if ( strcmp ( fdr3[iiii].to , fdr[i].from) != 0 )
+		 {
+		   strcpy ( fdr3[iiii+1].branch ,"Y" );
+		   fprintf (stderr ,"\n   fdr3[j].to  = %s", fdr3[j].to );
+		 }
+	      iiii++ ;
+	      strcpy (fdr3[iiii].name   , fdr[i].name)   ; strcpy (fdr[i].name   ," ");
+	      strcpy (fdr3[iiii].from   , fdr[i].from)   ; strcpy (fdr[i].from   ," ");
+	      strcpy (fdr3[iiii].lmr1   , fdr[i].lmr1)   ; strcpy (fdr[i].lmr1   ," ");
+	      strcpy (fdr3[iiii].to     , fdr[i].to  )   ; strcpy (fdr[i].to     ," ");
+	      strcpy (fdr3[iiii].lmr2   , fdr[i].lmr2)   ; strcpy (fdr[i].lmr2   ," ");
+	      strcpy (fdr3[iiii].type   , fdr[i].type)   ; strcpy (fdr[i].type   ," ");
+	      strcpy (fdr3[iiii].openpt , fdr[i].openpt ); strcpy (fdr[i].openpt ," ");
+	      strcpy (fdr3[iiii].subtype, fdr[i].subtype); strcpy (fdr[i].subtype," ");
+	      strcpy (fdr3[iiii].grid   , fdr[i].grid   ); strcpy (fdr[i].grid   ," ");
+	      fdr3[iiii].kva = fdr[i].kva ; fdr[i].kva = 0 ;
+
+	      get_other_seg() ;
+	     }
+
+
+
+	 }
+    }
+
+ get_branch   () ;
+
+end_branch :
+  i++ ; i--;
+
+}
+/*------------------------------------------------------------------------*/
+/*                              trace_net()                               */
+/*------------------------------------------------------------------------*/
+void trace_net(long start_feat, char *term_feat)
+{
+ i = 1           ;
+ conn_count  = 0 ;
+ stack_count = 0 ;
+
+
+ conn_stack[++stack_count] = start_feat ;
+
+ while ( i <= stack_count )
+       {
+	found = 0 ;
+
+	for ( j=1 ; j <= conn_count ; j++ )
+	    {
+	     if ( conn_stack[i] == conn_list[j] )  { found = 1 ; break ; }
+	    }
+
+	if ( found == 0 )
+	   {
+	    conn_list[++conn_count] = conn_stack[i] ;
+	    get_connected_nan(conn_stack[i],term_feat);
+	   }
+
+	i++;
+       }
+
+ printf ("SLD INFO  : conn_count  = %d \n",conn_count  );
+/*
+ for ( i=1 ; i<= conn_count ; i++ )
+     { printf ("feat[%d] = %d \n",i,conn_list[i] ); }
+ */
+}
+/*---------------------------------------------------------------------------*/
+/*                            append_net()                                   */
+/*---------------------------------------------------------------------------*/
+void append_net(long start_feat, char *term_feat)
+{
+ i = 1 ;
+
+ conn_stack[++stack_count] = start_feat ;
+
+ while ( i <= stack_count )
+       {
+	found = 0 ;
+
+	for ( j=1 ; j <= conn_count ; j++ )
+	    {
+	     if ( conn_stack[i] == conn_list[j] )  { found = 1 ; break ; }
+	    }
+
+	if ( found == 0 )
+	   {
+	    conn_list[++conn_count] = conn_stack[i] ;
+	    get_connected_nan(conn_stack[i],term_feat);
+	   }
+
+	i++;
+       }
+
+}
+/*------------------------------------------------------------------------*/
+/*                        get_connected_nan()                             */
+/*------------------------------------------------------------------------*/
+void get_connected_nan(int feat_num,char *term_feat)
+{
+
+ EXEC SQL DECLARE nan1  CURSOR FOR
+	  SELECT  S_NODE ,
+		  ARC    ,
+		  E_NODE
+	  FROM    CONNECTIVITY
+	  WHERE   S_NODE = :number  OR  E_NODE = :number
+	  FOR     READ ONLY ;
+
+
+ number = feat_num ;
+
+ EXEC SQL SELECT FEAT_CODE , TYPE
+	  INTO   :code1    , :type
+	  FROM   FEATURES
+	  WHERE  FEAT_NUM = :number  ;
+
+ sscanf (code1,"%s",code) ;
+
+ if (SQLCODE != 0)
+    {
+     printf("\nERROR : get_connected_nan [SQLCODE] = %d\n",SQLCODE);
+     return;
+    }
+
+
+ if ( (type == 1) && (strcmp(code,term_feat) != 0) )
+    {
+     EXEC SQL OPEN  nan1 ;     /* CHECKERR ("OPEN CURSOR"); */
+
+     do {
+	 EXEC SQL FETCH nan1 INTO :conn_feat1, :conn_feat2, :conn_feat3 ;
+
+	 if (SQLCODE != 0) break ;
+	 conn_stack[++stack_count] = conn_feat1 ;
+	 conn_stack[++stack_count] = conn_feat2 ;
+	 conn_stack[++stack_count] = conn_feat3 ;
+	 /*
+	 printf ("\n CONN ROW %d %d %d",conn_feat1,conn_feat2,conn_feat3);
+	 */
+	} while(1);
+     EXEC SQL CLOSE nan1  ;
+    }
+else
+ if ( (type == 2) && (strcmp(code,term_feat) != 0) )
+    {
+     EXEC SQL SELECT S_NODE      , E_NODE
+	      INTO   :conn_feat1 , :conn_feat3
+	      FROM   CONNECTIVITY
+	      WHERE  ARC = :number ;
+
+     if (SQLCODE != 0) return ;
+     conn_stack[++stack_count] = conn_feat1 ;
+     conn_stack[++stack_count] = conn_feat3 ;
+     /*
+     printf ("\n CONN ROW %d %d %d",conn_feat1,number,conn_feat3);
+     */
+    }
+
+ return ;
+}
+/*------------------------------------------------------------------------*/
+/*                          print_data()                                  */
+/*------------------------------------------------------------------------*/
+void print_data()
+{
+ for ( i=1 ; i <= ii ; i++  )
+     {
+      printf ("Segment : %s %s %s %s %s %s %s %s %s\n"
+	      ,fdr1[i].name
+	      ,fdr1[i].from
+	      ,fdr1[i].lmr1
+	      ,fdr1[i].to
+	      ,fdr1[i].lmr2
+	      ,fdr1[i].type
+	      ,fdr1[i].branch
+	      ,fdr1[i].openpt
+	      ,fdr1[i].subtype );
+     }
+
+ for ( i=1 ; i <= iii ; i++  )
+     {
+      printf ("Segment : %s %s %s %s %s %s %s %s %s\n"
+	      ,fdr2[i].name
+	      ,fdr2[i].from
+	      ,fdr2[i].lmr1
+	      ,fdr2[i].to
+	      ,fdr2[i].lmr2
+	      ,fdr2[i].type
+	      ,fdr2[i].branch
+	      ,fdr2[i].openpt
+	      ,fdr2[i].subtype );
+     }
+
+ for ( i=1 ; i <= iiii ; i++  )
+     {
+      printf ("Segment : %s %s %s %s %s %s %s %s %s\n"
+	      ,fdr3[i].name
+	      ,fdr3[i].from
+	      ,fdr3[i].lmr1
+	      ,fdr3[i].to
+	      ,fdr3[i].lmr2
+	      ,fdr3[i].type
+	      ,fdr3[i].branch
+	      ,fdr3[i].openpt
+	      ,fdr3[i].subtype );
+     }
+}
+/*------------------------------------------------------------------------*/
+/*                           create_sld()                                 */
+/*------------------------------------------------------------------------*/
+void create_sld()
+{
+
+ add_label()   ;       /* Create SLD Feeder Label  */
+ sld_y -= 70   ;       /* shift to new sld x,y     */
+
+
+ for ( i=1 ; i <= ii ; i++ )
+     {
+      if ( fdr1[i].branch[0] == 'Y' )
+	 {
+	  get_last_xy()   ;
+
+	  sld_x += 250    ;
+	  sld_y  = last_y ;
+	 }
+
+      add_fdr();  sld_y -= 50 ;
+      add_sub();
+     }
+
+}
+/*------------------------------------------------------------------------*/
+/*                             add_label()                                */
+/*------------------------------------------------------------------------*/
+void add_label()
+{
+ feat_count++ ;
+
+ xy_index   = xy_LAST   ;
+ text_index = text_LAST ;
+
+ feat[feat_count].num = feat[feat_count-1].num + 1 ;
+
+ strcpy (feat[feat_count].code ,"SLD")        ;
+ feat[feat_count].type          = 2             ;
+ feat[feat_count].layer         = 34            ;
+ feat[feat_count].network       = 0             ;
+ feat[feat_count].scale_range[0]= 'Y'           ;
+ feat[feat_count].scale_range[1]= 'Y'           ;
+ feat[feat_count].scale_range[2]= 'Y'           ;
+ feat[feat_count].scale_range[3]= 'Y'           ;
+ feat[feat_count].scale_range[4]= 'Y'           ;
+ feat[feat_count].displayed[0]  = 'Y'           ;
+ feat[feat_count].selectble[0]  = 'I'           ;
+ feat[feat_count].has_attrib[0] = 'Y'           ;
+ feat[feat_count].has_text[0]   = 'Y'           ;
+ feat[feat_count].color         = 5             ;
+ feat[feat_count].xbase         = sld_x         ;
+ feat[feat_count].ybase         = sld_y - 30    ;
+ feat[feat_count].xend          = sld_x         ;
+ feat[feat_count].yend          = sld_y - 70    ;
+ feat[feat_count].xy_count      = 5             ;
+ feat[feat_count].text_count    = 1             ;
+ feat[feat_count].text          = text_index++  ;
+ feat[feat_count].xy            = xy_index      ;
+ feat[feat_count].linetype      = 1             ;  /* set default linetype */
+ feat[feat_count].linewidth     = 2             ;  /* set default linewidth*/
+
+ text[text_index].x    = sld_x ;
+ text[text_index].y    = sld_y ;
+ text[text_index].size = 20    ;
+ text[text_index].just = 5     ;
+ text[text_index].font = 2     ;
+ text[text_index].angle =0     ;
+ strcpy(text[text_index].string,fdr_feat_name) ;
+ text_LAST = text_LAST + 1 ;
+
+ x[xy_index+1] = sld_x - 80 ;
+ y[xy_index+1] = sld_y - 30 ;
+ x[xy_index+2] = sld_x - 80 ;
+ y[xy_index+2] = sld_y + 30 ;
+ x[xy_index+3] = sld_x + 80 ;
+ y[xy_index+3] = sld_y + 30 ;
+ x[xy_index+4] = sld_x + 80 ;
+ y[xy_index+4] = sld_y - 30 ;
+ x[xy_index+5] = sld_x      ;
+ y[xy_index+5] = sld_y - 30 ;
+ xy_LAST = xy_LAST + 5 ;
+
+}
+/*------------------------------------------------------------------------*/
+/*                             add_fdr()                                  */
+/*------------------------------------------------------------------------*/
+void add_fdr()
+{
+ feat_count++ ;
+
+ xy_index   = xy_LAST   ;
+ text_index = text_LAST ;
+
+ feat[feat_count].num = feat[feat_count-1].num + 1 ;
+
+ strcpy (feat[feat_count].code ,"SLD_FEEDER")   ;
+ feat[feat_count].type          = 2             ;
+ feat[feat_count].layer         = 34            ;
+ feat[feat_count].network       = 0             ;
+ feat[feat_count].scale_range[0]= 'Y'           ;
+ feat[feat_count].scale_range[1]= 'Y'           ;
+ feat[feat_count].scale_range[2]= 'Y'           ;
+ feat[feat_count].scale_range[3]= 'Y'           ;
+ feat[feat_count].scale_range[4]= 'Y'           ;
+ feat[feat_count].displayed[0]  = 'Y'           ;
+ feat[feat_count].selectble[0]  = 'I'           ;
+ feat[feat_count].has_attrib[0] = 'Y'           ;
+ feat[feat_count].has_text[0]   = 'N'           ;
+ feat[feat_count].color         = 5             ;
+ feat[feat_count].text_count    = 0             ;
+ feat[feat_count].xy            = xy_index      ;
+ feat[feat_count].linetype      = 1             ;  /* set default linetype */
+ feat[feat_count].linewidth     = 2             ;  /* set default linewidth*/
+
+
+ switch(fdr1[i].branch[0])
+       {
+	case 'N':
+	{
+	 if ( fdr1[i].lmr1[0] == 'L' && fdr1[i].lmr2[0] == 'R' )
+	    {
+	     feat[feat_count].xbase = sld_x - 25 ;
+	     feat[feat_count].ybase = sld_y      ;
+
+	     x[xy_index+1] = sld_x - 25 ;
+	     y[xy_index+1] = sld_y - 25 ;
+
+	     x[xy_index+2] = sld_x + 25 ;
+	     y[xy_index+2] = sld_y - 25 ;
+
+	     feat[feat_count].xend = sld_x + 25 ;
+	     feat[feat_count].yend = sld_y - 50 ;
+
+	     feat[feat_count].xy_count = 2 ;
+	     xy_LAST = xy_LAST + 2 ;
+	     if ( fdr1[i].openpt[0] == 'Y') { add_oppt( feat[feat_count].xend , feat[feat_count].yend) ; }
+
+	    }
+    else if ( fdr1[i].lmr1[0] == 'M' && fdr1[i].lmr2[0] == 'R' )
+	    {
+	     feat[feat_count].xbase = sld_x ;
+	     feat[feat_count].ybase = sld_y ;
+
+	     x[xy_index+1] = sld_x      ;
+	     y[xy_index+1] = sld_y - 25 ;
+
+	     x[xy_index+2] = sld_x + 25 ;
+	     y[xy_index+2] = sld_y - 25 ;
+
+	     feat[feat_count].xend = sld_x + 25 ;
+	     feat[feat_count].yend = sld_y - 50 ;
+
+	     feat[feat_count].xy_count = 2 ;
+	     xy_LAST = xy_LAST + 2 ;
+	     if ( fdr1[i].openpt[0] == 'Y') { add_oppt( feat[feat_count].xend , feat[feat_count].yend) ; }
+
+            }
+    else if ( fdr1[i].lmr1[0] == 'R' && fdr1[i].lmr2[0] == 'R' )
+	    {
+	     feat[feat_count].xbase = sld_x + 25 ;
+	     feat[feat_count].ybase = sld_y      ;
+
+	     feat[feat_count].xend = sld_x + 25 ;
+	     feat[feat_count].yend = sld_y - 50 ;
+
+	     feat[feat_count].xy_count = 0 ;
+	     xy_LAST = xy_LAST ;
+             if ( fdr1[i].openpt[0] == 'Y') { add_oppt( feat[feat_count].xend , feat[feat_count].yend) ; }
+
+	    }
+    else if ( fdr1[i].lmr1[0] == 'L' && fdr1[i].lmr2[0] == 'M' )
+	    {
+	     feat[feat_count].xbase = sld_x - 25 ;
+	     feat[feat_count].ybase = sld_y      ;
+
+	     x[xy_index+1] = sld_x - 25 ;
+	     y[xy_index+1] = sld_y - 25 ;
+
+	     x[xy_index+2] = sld_x      ;
+	     y[xy_index+2] = sld_y - 25 ;
+
+	     feat[feat_count].xend = sld_x      ;
+	     feat[feat_count].yend = sld_y - 50 ;
+
+	     feat[feat_count].xy_count = 2 ;
+	     xy_LAST = xy_LAST + 2 ;
+	     if ( fdr1[i].openpt[0] == 'Y') { add_oppt( feat[feat_count].xend , feat[feat_count].yend) ; }
+
+	    }
+    else if ( fdr1[i].lmr1[0] == 'M' && fdr1[i].lmr2[0] == 'M' )
+	    {
+	     feat[feat_count].xbase = sld_x ;
+	     feat[feat_count].ybase = sld_y ;
+
+	     feat[feat_count].xend = sld_x      ;
+	     feat[feat_count].yend = sld_y - 50 ;
+
+	     feat[feat_count].xy_count = 0 ;
+	     xy_LAST = xy_LAST ;
+    	     if ( fdr1[i].openpt[0] == 'Y') { add_oppt( feat[feat_count].xend , feat[feat_count].yend) ; }
+
+	    }
+    else if ( fdr1[i].lmr1[0] == 'R' && fdr1[i].lmr2[0] == 'M' )
+	    {
+	     feat[feat_count].xbase = sld_x + 25 ;
+	     feat[feat_count].ybase = sld_y      ;
+
+	     x[xy_index+1] = sld_x + 25 ;
+	     y[xy_index+1] = sld_y - 25 ;
+
+	     x[xy_index+2] = sld_x      ;
+	     y[xy_index+2] = sld_y - 25 ;
+
+	     feat[feat_count].xend = sld_x      ;
+	     feat[feat_count].yend = sld_y - 50 ;
+
+	     feat[feat_count].xy_count = 2 ;
+	     xy_LAST = xy_LAST + 2 ;
+	     if ( fdr1[i].openpt[0] == 'Y') { add_oppt( feat[feat_count].xend , feat[feat_count].yend) ; }
+
+	    }
+    else if ( fdr1[i].lmr1[0] == 'L' && fdr1[i].lmr2[0] == 'L' )
+	    {
+	     feat[feat_count].xbase = sld_x - 25 ;
+	     feat[feat_count].ybase = sld_y      ;
+
+	     feat[feat_count].xend = sld_x - 25 ;
+	     feat[feat_count].yend = sld_y - 50 ;
+
+	     feat[feat_count].xy_count = 0 ;
+	     xy_LAST = xy_LAST ;
+	     if ( fdr1[i].openpt[0] == 'Y') { add_oppt( feat[feat_count].xend , feat[feat_count].yend) ; }
+
+	    }
+    else if ( fdr1[i].lmr1[0] == 'M' && fdr1[i].lmr2[0] == 'L' )
+	    {
+	     feat[feat_count].xbase = sld_x ;
+	     feat[feat_count].ybase = sld_y ;
+
+	     x[xy_index+1] = sld_x      ;
+	     y[xy_index+1] = sld_y - 25 ;
+
+	     x[xy_index+2] = sld_x - 25 ;
+	     y[xy_index+2] = sld_y - 25 ;
+
+	     feat[feat_count].xend = sld_x - 25 ;
+	     feat[feat_count].yend = sld_y - 50 ;
+
+	     feat[feat_count].xy_count = 2 ;
+	     xy_LAST = xy_LAST + 2 ;
+	     if ( fdr1[i].openpt[0] == 'Y') { add_oppt( feat[feat_count].xend , feat[feat_count].yend) ; }
+
+	    }
+    else if ( fdr1[i].lmr1[0] == 'R' && fdr1[i].lmr2[0] == 'L' )
+	    {
+	     feat[feat_count].xbase = sld_x + 25 ;
+	     feat[feat_count].ybase = sld_y      ;
+
+	     x[xy_index+1] = sld_x + 25 ;
+	     y[xy_index+1] = sld_y - 25 ;
+
+	     x[xy_index+2] = sld_x - 25 ;
+	     y[xy_index+2] = sld_y - 25 ;
+
+	     feat[feat_count].xend = sld_x - 25 ;
+	     feat[feat_count].yend = sld_y - 50 ;
+
+     	     feat[feat_count].xy_count = 2 ;
+	     xy_LAST = xy_LAST + 2 ;
+	     if ( fdr1[i].openpt[0] == 'Y') { add_oppt( feat[feat_count].xend , feat[feat_count].yend) ; }
+
+	    }
+      else
+	    {
+	     feat[feat_count].xbase = sld_x - 25 ;
+	     feat[feat_count].ybase = sld_y      ;
+
+	     x[xy_index+1] = sld_x - 25 ;
+	     y[xy_index+1] = sld_y - 25 ;
+
+	     x[xy_index+2] = sld_x + 25 ;
+	     y[xy_index+2] = sld_y - 25 ;
+
+	     feat[feat_count].xend = sld_x + 25 ;
+	     feat[feat_count].yend = sld_y - 50 ;
+
+	     feat[feat_count].xy_count = 2 ;
+	     xy_LAST = xy_LAST + 2 ;
+	     if ( fdr1[i].openpt[0] == 'Y') { add_oppt( feat[feat_count].xend , feat[feat_count].yend) ; }
+
+	    }
+	 break ;
+	}
+
+
+	case 'Y':
+	{
+	 if ( fdr1[i].lmr1[0] == 'L' && fdr1[i].lmr2[0] == 'R' )
+	    {
+	     feat[feat_count].xbase = last_x - 20 ;
+	     feat[feat_count].ybase = sld_y       ;
+
+	     x[xy_index+1] = last_x - 20 ;
+	     y[xy_index+1] = sld_y - 15  ;
+
+	     x[xy_index+2] = sld_x + 25 ;
+	     y[xy_index+2] = sld_y - 15 ;
+
+	     feat[feat_count].xend = sld_x + 25 ;
+	     feat[feat_count].yend = sld_y - 50 ;
+
+	     feat[feat_count].xy_count = 2 ;
+	     xy_LAST = xy_LAST + 2 ;
+	     if ( fdr1[i].openpt[0] == 'Y') { add_oppt( feat[feat_count].xend , feat[feat_count].yend) ; }
+
+	    }
+    else if ( fdr1[i].lmr1[0] == 'M' && fdr1[i].lmr2[0] == 'R' )
+	    {
+	     feat[feat_count].xbase = last_x + 5 ;
+	     feat[feat_count].ybase = sld_y      ;
+
+	     x[xy_index+1] = last_x + 5 ;
+	     y[xy_index+1] = sld_y - 15 ;
+
+	     x[xy_index+2] = sld_x + 25 ;
+	     y[xy_index+2] = sld_y - 15 ;
+
+	     feat[feat_count].xend = sld_x + 25 ;
+	     feat[feat_count].yend = sld_y - 50 ;
+
+	     feat[feat_count].xy_count = 2 ;
+	     xy_LAST = xy_LAST + 2 ;
+	     if ( fdr1[i].openpt[0] == 'Y') { add_oppt( feat[feat_count].xend , feat[feat_count].yend) ; }
+
+	    }
+    else if ( fdr1[i].lmr1[0] == 'R' && fdr1[i].lmr2[0] == 'R' )
+	    {
+	     feat[feat_count].xbase = last_x - 30 ;
+	     feat[feat_count].ybase = sld_y       ;
+
+	     x[xy_index+1] = last_x - 30 ;
+	     y[xy_index+1] = sld_y - 15  ;
+
+	     x[xy_index+2] = sld_x + 25 ;
+	     y[xy_index+2] = sld_y - 15 ;
+
+	     feat[feat_count].xend = sld_x + 25 ;
+	     feat[feat_count].yend = sld_y - 50 ;
+
+	     feat[feat_count].xy_count = 2;
+	     xy_LAST = xy_LAST + 2 ;
+	     if ( fdr1[i].openpt[0] == 'Y') { add_oppt( feat[feat_count].xend , feat[feat_count].yend) ; }
+
+	    }
+    else if ( fdr1[i].lmr1[0] == 'L' && fdr1[i].lmr2[0] == 'M' )
+	    {
+	     feat[feat_count].xbase = last_x - 20 ;
+	     feat[feat_count].ybase = sld_y       ;
+
+	     x[xy_index+1] = last_x - 20 ;
+	     y[xy_index+1] = sld_y - 15  ;
+
+	     x[xy_index+2] = sld_x      ;
+	     y[xy_index+2] = sld_y - 15 ;
+
+	     feat[feat_count].xend = sld_x      ;
+	     feat[feat_count].yend = sld_y - 50 ;
+
+	     feat[feat_count].xy_count = 2 ;
+	     xy_LAST = xy_LAST + 2 ;
+	     if ( fdr1[i].openpt[0] == 'Y') { add_oppt( feat[feat_count].xend , feat[feat_count].yend) ; }
+
+	    }
+    else if ( fdr1[i].lmr1[0] == 'M' && fdr1[i].lmr2[0] == 'M' )
+	    {
+	     feat[feat_count].xbase = last_x + 5 ;
+	     feat[feat_count].ybase = sld_y      ;
+
+	     x[xy_index+1] = last_x + 5 ;
+	     y[xy_index+1] = sld_y - 15 ;
+
+	     x[xy_index+2] = sld_x      ;
+	     y[xy_index+2] = sld_y - 15 ;
+
+	     feat[feat_count].xend = sld_x      ;
+	     feat[feat_count].yend = sld_y - 50 ;
+
+	     feat[feat_count].xy_count = 2 ;
+	     xy_LAST = xy_LAST + 2 ;
+	     if ( fdr1[i].openpt[0] == 'Y') { add_oppt( feat[feat_count].xend , feat[feat_count].yend) ; }
+
+	    }
+    else if ( fdr1[i].lmr1[0] == 'R' && fdr1[i].lmr2[0] == 'M' )
+	    {
+	     feat[feat_count].xbase = last_x - 30 ;
+	     feat[feat_count].ybase = sld_y       ;
+
+	     x[xy_index+1] = last_x - 30 ;
+	     y[xy_index+1] = sld_y - 15  ;
+
+	     x[xy_index+2] = sld_x      ;
+	     y[xy_index+2] = sld_y - 15 ;
+
+	     feat[feat_count].xend = sld_x      ;
+	     feat[feat_count].yend = sld_y - 50 ;
+
+	     feat[feat_count].xy_count = 2 ;
+	     xy_LAST = xy_LAST + 2 ;
+	     if ( fdr1[i].openpt[0] == 'Y') { add_oppt( feat[feat_count].xend , feat[feat_count].yend) ; }
+
+	    }
+    else if ( fdr1[i].lmr1[0] == 'L' && fdr1[i].lmr2[0] == 'L' )
+	    {
+	     feat[feat_count].xbase = last_x - 20 ;
+	     feat[feat_count].ybase = sld_y       ;
+
+	     x[xy_index+1] = last_x - 20 ;
+	     y[xy_index+1] = sld_y - 15  ;
+
+	     x[xy_index+2] = sld_x - 25 ;
+	     y[xy_index+2] = sld_y - 15 ;
+
+	     feat[feat_count].xend = sld_x - 25 ;
+	     feat[feat_count].yend = sld_y - 50 ;
+
+	     feat[feat_count].xy_count = 2 ;
+	     xy_LAST = xy_LAST + 2 ;
+	     if ( fdr1[i].openpt[0] == 'Y') { add_oppt( feat[feat_count].xend , feat[feat_count].yend) ; }
+
+	    }
+    else if ( fdr1[i].lmr1[0] == 'M' && fdr1[i].lmr2[0] == 'L' )
+	    {
+	     feat[feat_count].xbase = last_x + 5 ;
+	     feat[feat_count].ybase = sld_y      ;
+
+	     x[xy_index+1] = last_x + 5 ;
+	     y[xy_index+1] = sld_y - 15 ;
+
+	     x[xy_index+2] = sld_x - 25 ;
+	     y[xy_index+2] = sld_y - 15 ;
+
+	     feat[feat_count].xend = sld_x - 25 ;
+	     feat[feat_count].yend = sld_y - 50 ;
+
+	     feat[feat_count].xy_count = 2 ;
+	     xy_LAST = xy_LAST + 2 ;
+	     if ( fdr1[i].openpt[0] == 'Y') { add_oppt( feat[feat_count].xend , feat[feat_count].yend) ; }
+
+	    }
+    else if ( fdr1[i].lmr1[0] == 'R' && fdr1[i].lmr2[0] == 'L' )
+	    {
+	     feat[feat_count].xbase = last_x - 30 ;
+	     feat[feat_count].ybase = sld_y       ;
+
+	     x[xy_index+1] = last_x - 30 ;
+	     y[xy_index+1] = sld_y - 15  ;
+
+	     x[xy_index+2] = sld_x - 25 ;
+	     y[xy_index+2] = sld_y - 15 ;
+
+	     feat[feat_count].xend = sld_x - 25 ;
+	     feat[feat_count].yend = sld_y - 50 ;
+
+	     feat[feat_count].xy_count = 2 ;
+	     xy_LAST = xy_LAST + 2 ;
+	     if ( fdr1[i].openpt[0] == 'Y') { add_oppt( feat[feat_count].xend , feat[feat_count].yend) ; }
+
+	    }
+      else
+	    {
+	     feat[feat_count].xbase = last_x - 20 ;
+	     feat[feat_count].ybase = sld_y       ;
+
+	     x[xy_index+1] = last_x - 20 ;
+	     y[xy_index+1] = sld_y - 15  ;
+
+	     x[xy_index+2] = sld_x + 25 ;
+	     y[xy_index+2] = sld_y - 15 ;
+
+	     feat[feat_count].xend = sld_x + 25 ;
+	     feat[feat_count].yend = sld_y - 50 ;
+
+	     feat[feat_count].xy_count = 2 ;
+	     xy_LAST = xy_LAST + 2 ;
+	     if ( fdr1[i].openpt[0] == 'Y') { add_oppt( feat[feat_count].xend , feat[feat_count].yend) ; }
+
+	    }
+	 break ;
+
+	}
+
+      } /* end switch */
+
+}
+/*------------------------------------------------------------------------*/
+/*                              add_sub()                                 */
+/*------------------------------------------------------------------------*/
+void add_sub()
+{
+ feat_count++ ;
+
+ xy_index   = xy_LAST   ;
+ text_index = text_LAST ;
+
+ feat[feat_count].num = feat[feat_count-1].num + 1 ;
+
+ strcpy (feat[feat_count].code ,"SLD_SUB")      ;
+ feat[feat_count].type          = 2             ;
+ feat[feat_count].layer         = 34            ;
+ feat[feat_count].network       = 0             ;
+ feat[feat_count].scale_range[0]= 'Y'           ;
+ feat[feat_count].scale_range[1]= 'Y'           ;
+ feat[feat_count].scale_range[2]= 'Y'           ;
+ feat[feat_count].scale_range[3]= 'Y'           ;
+ feat[feat_count].scale_range[4]= 'Y'           ;
+ feat[feat_count].displayed[0]  = 'Y'           ;
+ feat[feat_count].selectble[0]  = 'I'           ;
+ feat[feat_count].has_attrib[0] = 'Y'           ;
+ feat[feat_count].has_text[0]   = 'Y'           ;
+ feat[feat_count].color         = 2             ;
+ feat[feat_count].xbase         = sld_x - 30    ;
+ feat[feat_count].ybase         = sld_y         ;
+ feat[feat_count].xend          = sld_x + 30    ;
+ feat[feat_count].yend          = sld_y         ;
+ feat[feat_count].xy_count      = 0             ;
+ feat[feat_count].text_count    = 2             ;
+ feat[feat_count].text          = text_index    ;
+ feat[feat_count].linetype      = 1             ;  /* set default linetype */
+ feat[feat_count].linewidth     = 2             ;  /* set default linewidth*/
+
+ text[text_index+1].x     = sld_x + 50 ;
+ text[text_index+1].y     = sld_y      ;
+ text[text_index+1].size  = 15         ;
+ text[text_index+1].just  = 4          ;  /* Middle Left */
+ text[text_index+1].font  = 2          ;
+ text[text_index+1].angle = 0          ;
+ strcpy(text[text_index+1].string,fdr1[i].to) ;
+
+ text[text_index+2].x     = sld_x - 50 ;
+ text[text_index+2].y     = sld_y      ;
+ text[text_index+2].size  = 10         ;
+ text[text_index+2].just  = 6          ;  /* Middle Right */
+ text[text_index+2].font  = 2          ;
+ text[text_index+2].angle = 0          ;
+ sprintf (text[text_index+2].string,"%c%d",fdr1[i].subtype[0],fdr1[i].kva);
+
+ text_LAST = text_LAST + 2 ;
+
+ fdr1[i].last_x = sld_x ;
+ fdr1[i].last_y = sld_y ;
+}
+/*------------------------------------------------------------------------*/
+/*                              add_oppt()                                */
+/*------------------------------------------------------------------------*/
+void add_oppt(int sld_x , int sld_y)
+{
+ feat_count++ ;
+
+ feat[feat_count].num = feat[feat_count-1].num + 1 ;
+
+ strcpy (feat[feat_count].code ,"SLD_OPENPT")   ;
+ feat[feat_count].type          = 2             ;
+ feat[feat_count].layer         = 34            ;
+ feat[feat_count].network       = 0             ;
+ feat[feat_count].scale_range[0]= 'Y'           ;
+ feat[feat_count].scale_range[1]= 'Y'           ;
+ feat[feat_count].scale_range[2]= 'Y'           ;
+ feat[feat_count].scale_range[3]= 'Y'           ;
+ feat[feat_count].scale_range[4]= 'Y'           ;
+ feat[feat_count].displayed[0]  = 'Y'           ;
+ feat[feat_count].selectble[0]  = 'I'           ;
+ feat[feat_count].has_attrib[0] = 'Y'           ;
+ feat[feat_count].has_text[0]   = 'Y'           ;
+ feat[feat_count].color         = 2             ;
+ feat[feat_count].xbase         = sld_x - 5     ;
+ feat[feat_count].ybase         = sld_y + 7     ;
+ feat[feat_count].xend          = sld_x + 5     ;
+ feat[feat_count].yend          = sld_y + 7     ;
+ feat[feat_count].xy_count      = 0             ;
+ feat[feat_count].text_count    = 0             ;
+ feat[feat_count].linetype      = 1             ;  /* set default linetype */
+ feat[feat_count].linewidth     = 2             ;  /* set default linewidth*/
+
+
+//  fdr1[i].last_x = sld_x ;
+//  fdr1[i].last_y = sld_y ;
+}
+/*------------------------------------------------------------------------*/
+/*                          get_last_xy()                                 */
+/*------------------------------------------------------------------------*/
+int get_last_xy()
+{
+
+ for ( j=1 ; j <= ii ; j++ )
+     {
+      if ( strcmp ( fdr1[i].from , fdr1[j].to ) == 0  )
+	 {
+	  printf("Branch last_y = %d \n", fdr1[j].last_y  );
+
+	  last_x = fdr1[j].last_x ;
+	  last_y = fdr1[j].last_y ;
+
+	  return ;
+	 }
+
+     }
+
+}

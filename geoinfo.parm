@@ -1,0 +1,54 @@
+
+DB_UNIT          = DM
+DXF_DB_UNIT      = M
+PROJECTION       = ETM
+
+X_MIN            = 5000000.0
+Y_MIN            = 5000000.0
+X_MAX            = 5002230.39
+Y_MAX            = 5002230.39
+
+SC_RANGE1        = 1000
+SC_RANGE2        = 2500
+SC_RANGE3        = 10000
+SC_RANGE4        = 25000
+
+REFRESH          = 5000   
+CURSOR_SIZE      = 8
+SYMB_CLIP_BUFFER = 50
+LINE_CLIP_BUFFER = 10000
+JOIN_TOLERANCE   = 50
+
+QUEUE_NAME       = hpgl
+
+SYMBOL_PATH      = ./symbol
+BITMAP_PATH      = ./bitmaps
+IMPORT_PATH      = /home/geoinfo/data
+
+FONT_PATH        = ./font
+
+FONT1            = standard.font
+FONT2            = courier.font
+FONT3            = concept.font
+FONT4            = quick.font
+FONT5            = helvetic.font
+FONT6            = outline.font
+FONT7            = complex_italic1.font
+FONT8            = complex_italic2.font
+FONT9            = complex_roman1.font
+FONT10           = complex_roman2.font
+FONT11           = complex_script.font
+FONT12           = multiplex_3x_italic.font
+FONT13           = multiplex_2x_roman.font
+FONT14           = multiplex_3x_roman.font
+FONT15           = simplex_roman.font
+FONT16           = simplex_script.font
+FONT17           = gothic_english.font
+FONT18           = gothic_italia.font
+FONT19           = gfis.font
+FONT20           = gasfont.font
+FONT21           = arabic1.font
+
+SYMBOL           = geoinfo.symbol
+
+MONITOR_SIZE     = 15

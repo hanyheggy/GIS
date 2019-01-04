@@ -1,0 +1,26 @@
+
+ clear
+
+ rm -rf $1.EXPORT
+ mkdir  $1.EXPORT
+
+ echo connecting to DB : [ $1 ]
+
+
+ db2 connect to $1
+
+ db2 "export to $1.EXPORT/dbase.ixf         of ixf  select * from dbase        "
+ db2 "export to $1.EXPORT/features.ixf      of ixf  select * from features     "
+ db2 "export to $1.EXPORT/coordinates.ixf   of ixf  select * from coordinates  "
+ db2 "export to $1.EXPORT/text.ixf          of ixf  select * from text         "
+ db2 "export to $1.EXPORT/layer.ixf         of ixf  select * from layer        "
+ db2 "export to $1.EXPORT/connectivity.ixf  of ixf  select * from connectivity "
+
+ db2 "export to $1.EXPORT/diststn.ixf       of ixf  select * from diststn      "
+ db2 "export to $1.EXPORT/mvfeeder.ixf      of ixf  select * from mvfeeder     "
+ db2 "export to $1.EXPORT/grid.ixf          of ixf  select * from grid         "
+
+ db2 "export to $1.EXPORT/node.ixf          of ixf  select * from node         "
+ db2 "export to $1.EXPORT/street.ixf        of ixf  select * from street       "
+
+ db2 connect reset

@@ -1,0 +1,76 @@
+
+Dated : 25 Jan. 1998
+
+From  : Eng. Hany Heggy , SCECO GIS Dep.
+
+To    : Eng. Sameh Zaglul , IBM Egypt.
+
+SUB   : geoINFO/6000  DEMO pakage
+
+
+
+Dear friend,
+
+ This document contains needed informations to run geoINFO smoothly,
+I hope you will enjoy it and give me feedback about the performance
+& quality of graphics.
+
+Please, try to send me your comments as fast as possible.
+
+
+
+Prerequists :
+-----------
+
+1. geoINFO/6000 runs only on AIX Ver 4.2 or higher.
+
+2. geoINFO/6000 needs symbol file (geoinfo.symbol) to be found in the
+   current directory, otherwise it will not run.
+
+3. geoINFO/6000 ASCII Data files should have *.inf extenstion.
+
+
+
+Notes :
+-----
+
+ 1. inf Format represent Graphic Data only as follows :
+    * Line 1 contains Database unit          KM/M/DM/CM/MM
+    * Line 2 contains workspace extenstions  xmin ymin xmax ymax
+    * Any other Line contain Feature graphic Data
+      feature number,feature code,type,layer number,network,xy Coordinates,
+      symbol number,symbol size,color,text annotation , ... etc
+
+ 2. Default Database unit is DM (1/10 of M) but you can change it
+    either from conversion program written in GPG, or directly by modify
+    the inf data file
+
+ 3. Max Number of features is 500,000 .
+
+ 4. Max Number of XY-Coordiates  4,000,000 .
+
+ 5. Plotting generates plot which Fit to papaer only.
+
+ 6. geoINFO/6000 can read DXF files (ACAD LINE enitity only)
+
+ 7. geoINFO/6000 support Annotation Text Drawing on screen.
+
+ 8. geoINFO/6000 support point & line features only till now.
+
+ 9. geoINFO/6000 Color codes is the same as GPG :
+     Color # 1    blue
+     Color # 2    red
+     Color # 3    pink
+     Color # 4    green
+     Color # 5    cyan
+     Color # 6    yellow
+     Color # 7    white
+     Color # 8    black
+     Color # 9    gray
+     Color # 10   wheat
+     Color # 11   brown
+     Color # 12   orange
+
+10. Given sample compressed Data files in inf & dxf formats.
+
+11. Given entity & menu defn. required to creat inf from gpg workspace.
