@@ -1,8 +1,9 @@
 # geoINFO
 
-geoINFO is a simple GIS engine written from scratch in C, Motif, X-Windows and DB2 on IBM RS/6000 UNIX machine running AIX 4.2, as it is written in the most popular open system tools, the migration process to any other UNIX/Linux platform is so simple ( just recompile the code ),  I have migrated it to RedHat 6.2 Linux easily !  
+geoINFO is a simple GIS engine written from scratch in C, Motif, X-Windows and DB2 on IBM RS/6000 UNIX machine running AIX, as it is written in the most popular open source tools, the migration process to any other UNIX/Linux platform is so simple (just recompile the code), I have migrated it to RedHat Linux easily ! 
+
 geoINFO is designed so that we keep attributes data inside a database and load the graphics data only to RAM, then access attribute data on request.
-This makes it faster in data loading and can handle huge data (up to ram size).
+This makes it faster in data loading and can handle huge map data (up to ram size).
 
 What is geoINFO:
 
